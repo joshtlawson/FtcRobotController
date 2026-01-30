@@ -74,12 +74,15 @@ public class RobotControl extends OpMode{
         BallMover.setDirection(DcMotor.Direction.FORWARD);
         Intake.setDirection(DcMotor.Direction.FORWARD);
         LeftLauncher.setDirection(DcMotor.Direction.REVERSE);
-        RightLauncher.setDirection(DcMotor.Direction.REVERSE);
+        RightLauncher.setDirection(DcMotor.Direction.FORWARD);
         // Control Parameters
         LeftStopPosition = 0.75f;
         LeftOpenPosition = 0.5f;
         RightStopPosition = 0.5f;
         RightOpenPosition = 0.75f;
+
+        RotationRatio = 11.1;
+        GearRatio = 41.25;
     }
     public void StopRobot()
     {
@@ -109,7 +112,7 @@ public class RobotControl extends OpMode{
     /**
      * Describe this function...
      */
-    private void RobotMoveDistance(int Forward_in, int Rotate_cw_degrees, int Lateral_right_in, int waitTime_sec) {
+    public void RobotMoveDistance(int Forward_in, int Rotate_cw_degrees, int Lateral_right_in, int waitTime_sec) {
         telemetry.addLine("calledFunction");
         BackLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         FrontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -151,6 +154,8 @@ public class RobotControl extends OpMode{
         ((DcMotorEx) LeftLauncher).setVelocity(0);
         ((DcMotorEx) BallMover).setVelocity(0);
     }
+
+    // Manual TeleOp Commands
     public void OpenGate()
     {
         RightBallStop.setPosition(RightOpenPosition);
@@ -167,6 +172,13 @@ public class RobotControl extends OpMode{
         BackLeftDrive.setVelocity(ForwardSpeed + RightSpeed + ClockwiseSpeed);
         FrontRightDrive.setVelocity(ForwardSpeed + RightSpeed - ClockwiseSpeed);
         BackRightDrive.setVelocity(ForwardSpeed - RightSpeed - ClockwiseSpeed);
+    }
+    public void SetLaunchControlCmds(float intakeVelocity, float BallMoverSpeedCmd, float LauncherSpeedCmd)
+    {
+        Intake.setVelocity(intakeVelocity);
+        BallMover.setVelocity(BallMoverSpeedCmd);
+        RightLauncher.setVelocity(LauncherSpeedCmd);
+        LeftLauncher.setVelocity(LauncherSpeedCmd);
     }
 
     @Override

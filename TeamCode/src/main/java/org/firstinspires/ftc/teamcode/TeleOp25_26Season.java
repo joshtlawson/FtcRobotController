@@ -35,7 +35,7 @@ public class TeleOp25_26Season extends OpMode {
     private float LeftOpenPosition;
     private float RightStopPosition;
     private float RightOpenPosition;
-    //private RobotControl Robo;
+    private RobotControl Robo = new RobotControl();
     private ElapsedTime runtime = new ElapsedTime();
     /**
      * This sample contains the bare minimum Blocks for any regular OpMode. The 3 blue
@@ -49,39 +49,7 @@ public class TeleOp25_26Season extends OpMode {
      * Code to run ONCE when the driver hits INIT
      */
     public void init() {
-
-        // Setup Hardware
-        FrontRightDrive = (DcMotorEx)(hardwareMap.get(DcMotor.class, "FrontRightDrive"));
-        FrontLeftDrive = (DcMotorEx)(hardwareMap.get(DcMotor.class, "FrontLeftDrive"));
-        BackLeftDrive = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BackLeftDrive"));
-        BackRightDrive = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BackRightDrive"));
-        BallMover = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BallMover"));
-        Intake = (DcMotorEx )(hardwareMap.get(DcMotor.class, "Intake"));
-        LeftLauncher = (DcMotorEx )(hardwareMap.get(DcMotor.class, "LeftLauncher"));
-        RightLauncher = (DcMotorEx )(hardwareMap.get(DcMotor.class, "RightLauncher"));
-        RightBallStop = hardwareMap.get(Servo.class, "RightBallStop");
-        LeftBallStop = hardwareMap.get(Servo.class, "LeftBallStop");
-
-        // Setup the PID Tuning
-        ((DcMotorEx) FrontRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
-        ((DcMotorEx) FrontLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 18, MotorControlAlgorithm.PIDF));
-        ((DcMotorEx) BackLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 15, MotorControlAlgorithm.PIDF));
-        ((DcMotorEx) BackRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 15, MotorControlAlgorithm.PIDF));
-
-        // Configure Movement Types
-        BallMover.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        LeftLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        RightLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        LeftLauncher.setDirection(DcMotor.Direction.REVERSE);
-        RightLauncher.setDirection(DcMotor.Direction.REVERSE);
-
-        FrontRightDrive.setDirection(DcMotor.Direction.REVERSE);
-        BackRightDrive.setDirection(DcMotor.Direction.REVERSE);
-        FrontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
-        BackLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-
+        Robo.init();
         // Control Parameters
         SteeringAggressiveness = 1500;
         ForwardAggressiveness = 2500;
@@ -90,10 +58,6 @@ public class TeleOp25_26Season extends OpMode {
         MaxLauncherSpeed = 3000;
         MaxIntakeVelocity = 2000;
         MaxBallMoverSpeed = 3000;
-        LeftStopPosition = 0.75f;
-        LeftOpenPosition = 0.5f;
-        RightStopPosition = 0.5f;
-        RightOpenPosition = 0.75f;
     }
     /*
      * Code to run REPEATEDLY after the driver hits INIT, but before they hit START
@@ -146,17 +110,17 @@ public class TeleOp25_26Season extends OpMode {
         // Remote Control Turning Cmds
         float ClockwiseVelocityCmd = gamepad1.right_stick_x*SteeringAggressiveness;
 
-        
+        Robo.SetDriveMotionCmds(ForwardSpeedCmd, RightSpeedCmd, ClockwiseVelocityCmd);
         
         
         // Intake Logic -----------------------------------------------------------------------
-        float intakeVelocity;
+        float IntakeVelocityCmd;
         if (gamepad2.dpad_down) {
-            intakeVelocity = -MaxIntakeVelocity;
+            IntakeVelocityCmd = -MaxIntakeVelocity;
         } else if (gamepad2.dpad_up) {
-            intakeVelocity = MaxIntakeVelocity;
+            IntakeVelocityCmd = MaxIntakeVelocity;
         } else {
-            intakeVelocity = 0;
+            IntakeVelocityCmd = 0;
         }
 
         // Launcher
@@ -176,35 +140,21 @@ public class TeleOp25_26Season extends OpMode {
             BallMoverSpeedCmd = MaxBallMoverSpeed;
         } else {
             BallMoverSpeedCmd = -(MaxBallMoverSpeed * gamepad2.right_stick_y);
-        }
-        
+        }       
         
         // Gate
         if (gamepad2.dpad_right) {
-            RightBallStop.setPosition(RightOpenPosition);
-            LeftBallStop.setPosition(LeftOpenPosition);
+            Robo.OpenGate();
         } else {
-            RightBallStop.setPosition(RightStopPosition);
-            LeftBallStop.setPosition(LeftStopPosition);
+            Robo.CloseGate();
         }
         // Output Commands
-        Intake.setVelocity(intakeVelocity);
-        BallMover.setVelocity(BallMoverSpeedCmd);
-        RightLauncher.setVelocity(-LauncherSpeedCmd);
-        LeftLauncher.setVelocity(-LauncherSpeedCmd);
-        this.SetDriveMotionCmds(ForwardSpeedCmd, RightSpeedCmd, ClockwiseVelocityCmd);
+        Robo.SetLaunchControlCmds(IntakeVelocityCmd,BallMoverSpeedCmd,LauncherSpeedCmd);
 
         // Add some Telemetry
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Run Time: " + runtime.toString());
         telemetry.addData("Velocity Cmds", "Forward (%.2f), Rightward (%.2f), ClockWise (%.2f)",
                 ForwardSpeedCmd, RightSpeedCmd,ClockwiseVelocityCmd);
-    }
-    void SetDriveMotionCmds(float ForwardSpeed, float RightSpeed, float ClockwiseSpeed)
-    {
-        FrontLeftDrive.setVelocity(ForwardSpeed  - RightSpeed + ClockwiseSpeed);
-        BackLeftDrive.setVelocity(ForwardSpeed + RightSpeed + ClockwiseSpeed);
-        FrontRightDrive.setVelocity(ForwardSpeed + RightSpeed - ClockwiseSpeed);
-        BackRightDrive.setVelocity(ForwardSpeed - RightSpeed - ClockwiseSpeed);
     }
 }
