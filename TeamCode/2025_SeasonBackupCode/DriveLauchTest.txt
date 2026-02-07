@@ -1,0 +1,150 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.MotorControlAlgorithm;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
+
+@TeleOp(name = "DriveLauchTest (Blocks to Java)")
+public class DriveLauchTest extends LinearOpMode {
+
+  private DcMotor FrontRightDrive;
+  private DcMotor FrontLeftDrive;
+  private DcMotor BackLeftDrive;
+  private DcMotor BackRightDrive;
+  private DcMotor BallMover;
+  private DcMotor Intake;
+  private DcMotor LeftLauncher;
+  private DcMotor RightLauncher;
+  private Servo RightBallStop;
+  private Servo LeftBallStop;
+
+  /**
+   * This sample contains the bare minimum Blocks for any regular OpMode. The 3 blue
+   * Comment Blocks show where to place Initialization code (runs once, after touching the
+   * DS INIT button, and before touching the DS Start arrow), Run code (runs once, after
+   * touching Start), and Loop code (runs repeatedly while the OpMode is active, namely not
+   * Stopped).
+   */
+  @Override
+  public void runOpMode() {
+    int SteeringAggressiveness;
+    int ForwardAggressiveness;
+    int strafingAggressiveness;
+    int InvertControllers;
+    double LiftPositionRange;
+    double MiddleLiftPosition;
+    int MaxLauncherSpeed;
+    int MaxIntakeVelocity;
+    int MaxBallMoverSpeed;
+    double LeftStopPosition;
+    double LeftOpenPosition;
+    double RightStopPosition;
+    double RightOpenPosition;
+    double LauncherSpeed;
+    float BallMoverSpeed;
+    float Forward;
+    float Rightward;
+    int IntakeVelocity;
+    float Clockwise;
+
+    FrontRightDrive = hardwareMap.get(DcMotor.class, "FrontRightDrive");
+    FrontLeftDrive = hardwareMap.get(DcMotor.class, "FrontLeftDrive");
+    BackLeftDrive = hardwareMap.get(DcMotor.class, "BackLeftDrive");
+    BackRightDrive = hardwareMap.get(DcMotor.class, "BackRightDrive");
+    BallMover = hardwareMap.get(DcMotor.class, "BallMover");
+    Intake = hardwareMap.get(DcMotor.class, "Intake");
+    LeftLauncher = hardwareMap.get(DcMotor.class, "LeftLauncher");
+    RightLauncher = hardwareMap.get(DcMotor.class, "RightLauncher");
+    RightBallStop = hardwareMap.get(Servo.class, "RightBallStop");
+    LeftBallStop = hardwareMap.get(Servo.class, "LeftBallStop");
+
+    waitForStart();
+    ((DcMotorEx) FrontRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
+    ((DcMotorEx) FrontLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 18, MotorControlAlgorithm.PIDF));
+    ((DcMotorEx) BackLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 15, MotorControlAlgorithm.PIDF));
+    ((DcMotorEx) BackRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 15, MotorControlAlgorithm.PIDF));
+    BallMover.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    LeftLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    RightLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    SteeringAggressiveness = 1500;
+    ForwardAggressiveness = 2500;
+    strafingAggressiveness = 2500;
+    InvertControllers = 1;
+    LiftPositionRange = 0.2;
+    MiddleLiftPosition = 0.5;
+    MaxLauncherSpeed = 3000;
+    MaxIntakeVelocity = 2000;
+    MaxBallMoverSpeed = 3000;
+    LeftStopPosition = 0.75;
+    LeftOpenPosition = 0.5;
+    RightStopPosition = 0.5;
+    RightOpenPosition = 0.75;
+    while (opModeIsActive()) {
+      FrontRightDrive.setDirection(DcMotor.Direction.REVERSE);
+      BackRightDrive.setDirection(DcMotor.Direction.REVERSE);
+      RightLauncher.setDirection(DcMotor.Direction.REVERSE);
+      FrontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+      BackLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+      // Launcher
+      if (gamepad2.left_bumper) {
+        LauncherSpeed = MaxLauncherSpeed;
+      } else if (gamepad2.right_bumper) {
+        LauncherSpeed = MaxLauncherSpeed * 0.54;
+      } else {
+        LauncherSpeed = MaxLauncherSpeed * gamepad2.right_trigger;
+      }
+      // Ball mover
+      if (gamepad2.cross) {
+        BallMoverSpeed = -MaxBallMoverSpeed;
+      } else if (gamepad2.triangle) {
+        BallMoverSpeed = MaxBallMoverSpeed;
+      } else {
+        BallMoverSpeed = -(MaxBallMoverSpeed * gamepad2.right_stick_y);
+      }
+      // Gate
+      if (gamepad2.dpad_right) {
+        RightBallStop.setPosition(RightOpenPosition);
+        LeftBallStop.setPosition(LeftOpenPosition);
+      } else {
+        RightBallStop.setPosition(RightStopPosition);
+        LeftBallStop.setPosition(LeftStopPosition);
+      }
+      // Drive Logic
+      Forward = -(InvertControllers * gamepad1.left_stick_y);
+      if (gamepad1.left_trigger > 0) {
+        Rightward = -(InvertControllers * gamepad1.left_trigger);
+      } else if (gamepad1.right_trigger > 0) {
+        Rightward = InvertControllers * gamepad1.right_trigger;
+      } else {
+        Rightward = 0;
+      }
+      // Intake
+      if (gamepad2.dpad_down) {
+        IntakeVelocity = -MaxIntakeVelocity;
+      } else if (gamepad2.dpad_up) {
+        IntakeVelocity = MaxIntakeVelocity;
+      } else {
+        IntakeVelocity = 0;
+      }
+      if (gamepad1.right_bumper) {
+        InvertControllers = -1;
+      } else {
+        InvertControllers = 1;
+      }
+      Clockwise = gamepad1.right_stick_x;
+      ((DcMotorEx) Intake).setVelocity(IntakeVelocity);
+      ((DcMotorEx) BallMover).setVelocity(BallMoverSpeed);
+      ((DcMotorEx) RightLauncher).setVelocity(-LauncherSpeed);
+      ((DcMotorEx) LeftLauncher).setVelocity(-LauncherSpeed);
+      ((DcMotorEx) FrontLeftDrive).setVelocity((Forward * ForwardAggressiveness - Rightward * strafingAggressiveness) + Clockwise * SteeringAggressiveness);
+      ((DcMotorEx) BackLeftDrive).setVelocity(Forward * ForwardAggressiveness + Rightward * strafingAggressiveness + Clockwise * SteeringAggressiveness);
+      ((DcMotorEx) FrontRightDrive).setVelocity(Forward * ForwardAggressiveness + (Rightward * strafingAggressiveness - Clockwise * SteeringAggressiveness));
+      ((DcMotorEx) BackRightDrive).setVelocity((Forward * ForwardAggressiveness - Rightward * strafingAggressiveness) - Clockwise * SteeringAggressiveness);
+    }
+  }
+}

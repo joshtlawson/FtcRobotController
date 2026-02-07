@@ -1,0 +1,176 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+@Autonomous(name = "AUTOBlue3SingleMoveDelay (Blocks to Java)", preselectTeleOp = "DriveLauchTest")
+public class AUTOBlue3SingleMoveDelay extends LinearOpMode {
+
+  private DcMotor BackRightDrive;
+  private DcMotor BackLeftDrive;
+  private DcMotor FrontLeftDrive;
+  private DcMotor FrontRightDrive;
+  private DcMotor RightLauncher;
+  private DcMotor LeftLauncher;
+  private DcMotor BallMover;
+  private DcMotor Intake;
+  private Servo RightBallStop;
+  private Servo LeftBallStop;
+
+  int MaxLauncherSpeed;
+  ElapsedTime RunTimer_sec;
+  double RotationRatio;
+  double GearRatio;
+  int MaxBallMoverSpeed;
+
+  /**
+   * Describe this function...
+   */
+  private void RobotMoveAtSpeed(int ForwardVelocity, int CWRotationalVelocity, int RightVelocity, double MoveTime_sec) {
+    telemetry.addLine("calledFunction");
+    BackRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    BackLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    FrontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    FrontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    ((DcMotorEx) FrontLeftDrive).setVelocity((GearRatio * ForwardVelocity - GearRatio * RightVelocity) - RotationRatio * CWRotationalVelocity);
+    ((DcMotorEx) BackLeftDrive).setVelocity((GearRatio * ForwardVelocity + GearRatio * RightVelocity) - RotationRatio * CWRotationalVelocity);
+    ((DcMotorEx) FrontRightDrive).setVelocity(GearRatio * ForwardVelocity + GearRatio * RightVelocity + RotationRatio * CWRotationalVelocity);
+    ((DcMotorEx) BackRightDrive).setVelocity((GearRatio * ForwardVelocity - GearRatio * RightVelocity) + RotationRatio * CWRotationalVelocity);
+    RunTimer_sec = new ElapsedTime();
+    RunTimer_sec.reset();
+    telemetry.addLine("waiting");
+    while (RunTimer_sec.seconds() < MoveTime_sec) {
+    }
+    BackLeftDrive.setPower(0);
+    BackRightDrive.setPower(0);
+    FrontLeftDrive.setPower(0);
+    FrontRightDrive.setPower(0);
+    telemetry.addLine("done");
+  }
+
+  /**
+   * Describe this function...
+   */
+  private void RobotMoveDistance(int Forward_in, int Rotate_cw_degrees, int Lateral_right_in, int waitTime_sec) {
+    telemetry.addLine("calledFunction");
+    BackLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    FrontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    FrontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    BackRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    BackLeftDrive.setPower(0.5);
+    BackRightDrive.setPower(0.5);
+    FrontLeftDrive.setPower(0.5);
+    FrontRightDrive.setPower(0.5);
+    FrontLeftDrive.setTargetPosition((int) (GearRatio * Forward_in + GearRatio * Lateral_right_in + RotationRatio * Rotate_cw_degrees));
+    BackLeftDrive.setTargetPosition((int) ((GearRatio * Forward_in - GearRatio * Lateral_right_in) + RotationRatio * Rotate_cw_degrees));
+    FrontRightDrive.setTargetPosition((int) ((GearRatio * Forward_in - GearRatio * Lateral_right_in) - RotationRatio * Rotate_cw_degrees));
+    BackRightDrive.setTargetPosition((int) ((GearRatio * Forward_in + GearRatio * Lateral_right_in) - RotationRatio * Rotate_cw_degrees));
+    BackRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    BackLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    FrontLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    FrontRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    RunTimer_sec = new ElapsedTime();
+    RunTimer_sec.reset();
+    telemetry.addLine("waiting");
+    while (RunTimer_sec.seconds() < waitTime_sec && (FrontLeftDrive.isBusy() || FrontRightDrive.isBusy() || BackLeftDrive.isBusy() || BackRightDrive.isBusy())) {
+    }
+    telemetry.addLine("done");
+  }
+
+  /**
+   * Describe this function...
+   */
+  private void LaunchBalls(int SpinTime_sec, int BallMoverTime_sec, int LauncherSpeed) {
+    RightLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    LeftLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    RightLauncher.setDirection(DcMotor.Direction.REVERSE);
+    LeftLauncher.setDirection(DcMotor.Direction.FORWARD);
+    ((DcMotorEx) LeftLauncher).setVelocity(MaxLauncherSpeed);
+    ((DcMotorEx) RightLauncher).setVelocity(MaxLauncherSpeed);
+    RunTimer_sec.reset();
+    while (RunTimer_sec.seconds() < SpinTime_sec) {
+    }
+    ((DcMotorEx) BallMover).setVelocity(MaxBallMoverSpeed);
+    RunTimer_sec.reset();
+    while (RunTimer_sec.seconds() < BallMoverTime_sec) {
+    }
+    ((DcMotorEx) RightLauncher).setVelocity(0);
+    ((DcMotorEx) LeftLauncher).setVelocity(0);
+    ((DcMotorEx) BallMover).setVelocity(0);
+  }
+
+  /**
+   * This sample contains the bare minimum Blocks for any regular OpMode. The 3 blue
+   * Comment Blocks show where to place Initialization code (runs once, after touching the
+   * DS INIT button, and before touching the DS Start arrow), Run code (runs once, after
+   * touching Start), and Loop code (runs repeatedly while the OpMode is active, namely not
+   * Stopped).
+   */
+  @Override
+  public void runOpMode() {
+    int MoveTime_sec;
+    double LiftPositionRange;
+    double MiddleLiftPosition;
+    int MaxIntakeVelocity;
+    int Aggressiveness;
+
+    BackRightDrive = hardwareMap.get(DcMotor.class, "BackRightDrive");
+    BackLeftDrive = hardwareMap.get(DcMotor.class, "BackLeftDrive");
+    FrontLeftDrive = hardwareMap.get(DcMotor.class, "FrontLeftDrive");
+    FrontRightDrive = hardwareMap.get(DcMotor.class, "FrontRightDrive");
+    RightLauncher = hardwareMap.get(DcMotor.class, "RightLauncher");
+    LeftLauncher = hardwareMap.get(DcMotor.class, "LeftLauncher");
+    BallMover = hardwareMap.get(DcMotor.class, "BallMover");
+    Intake = hardwareMap.get(DcMotor.class, "Intake");
+    RightBallStop = hardwareMap.get(Servo.class, "RightBallStop");
+    LeftBallStop = hardwareMap.get(Servo.class, "LeftBallStop");
+
+    waitForStart();
+    BallMover.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    LeftLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    RightLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    BackLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+    BackRightDrive.setDirection(DcMotor.Direction.REVERSE);
+    FrontRightDrive.setDirection(DcMotor.Direction.REVERSE);
+    RotationRatio = 11.1;
+    GearRatio = 41.25;
+    LiftPositionRange = 0.2;
+    MiddleLiftPosition = 0.5;
+    MaxLauncherSpeed = -1675;
+    MaxIntakeVelocity = 500;
+    MaxBallMoverSpeed = 2500;
+    Aggressiveness = 500;
+    telemetry.addLine("text");
+    telemetry.update();
+    if (opModeIsActive()) {
+      telemetry.update();
+      RunTimer_sec = new ElapsedTime();
+      MoveTime_sec = 15;
+      RunTimer_sec.reset();
+      while (RunTimer_sec.seconds() < MoveTime_sec) {
+        telemetry.update();
+        telemetry.addLine(RunTimer_sec);
+        telemetry.addLine(MoveTime_sec);
+      }
+      RightBallStop.setPosition(0.75);
+      LeftBallStop.setPosition(0.5);
+      // move to the launch line
+      RobotMoveAtSpeed(-30, 0, 0, 1.7);
+      // align with the goal
+      RobotMoveAtSpeed(-20, 23, 0, 2);
+      // launch
+      LaunchBalls(2, 3, 2500);
+      // move the gate
+      RobotMoveDistance(0, -45, 0, 5);
+      // line up with the gate
+      RobotMoveDistance(0, 0, 15, 5);
+      // move toward the gate
+      RobotMoveDistance(-20, 0, 0, 5);
+    }
+  }
+}
