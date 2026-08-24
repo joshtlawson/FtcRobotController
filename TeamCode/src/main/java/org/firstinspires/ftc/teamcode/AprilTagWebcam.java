@@ -48,16 +48,20 @@ public class AprilTagWebcam {
     }
 
     public void displayDetectionTelemetry(AprilTagDetection detection){
-                if (detection.metadata != null) {
+
+                if (detection != null) {
                     telemetry.addLine(String.format("\n ===== ID %d) %s",detection.id,detection.metadata.name));
-                    telemetry.addLine(String.format("XYZ = %6.1f %6.1f %6.1f (cm)",detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
-                    telemetry.addLine(String.format("PRY = %6.1f %6.1f %6.1f (deg)",detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-                    telemetry.addLine(String.format("RBE = %6.1f %6.1f %6.1f (cm, cm, deg)",detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
+                    //telemetry.addLine(String.format("XYZ = %6.1f %6.1f %6.1f (cm)",detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
+                    //telemetry.addLine(String.format("PRY = %6.1f %6.1f %6.1f (deg)",detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
+                    telemetry.addLine(String.format("RBE = %6.1f %6.1f %6.1f (cm, deg, cm)",detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
                 }
                 else {
-                    telemetry.addLine(String.format("\n ===== ID %d) Unknown",detection.id));
-                    telemetry.addLine(String.format("Center = %6.0f %6.0f (cm, cm)",detection.center.x, detection.center.y));
+                    telemetry.addLine(String.format("\n NO TAG DETECTED"));
                 }
+//                else {
+//                    telemetry.addLine(String.format("\n ===== ID %d) Unknown",detection.id));
+//                    telemetry.addLine(String.format("Center = %6.0f %6.0f (cm, cm)",detection.center.x, detection.center.y));
+//                }
 
 
 
