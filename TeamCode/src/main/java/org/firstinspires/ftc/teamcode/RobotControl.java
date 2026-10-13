@@ -22,10 +22,10 @@ public class RobotControl extends OpMode{
     private DcMotorEx BackRightDrive;
     private DcMotorEx BallMover;
     private DcMotorEx Intake;
-    private DcMotorEx LeftLauncher;
-    private DcMotorEx RightLauncher;
-    private Servo RightBallStop;
-    private Servo LeftBallStop;
+    private DcMotorEx Launcher;
+    private DcMotorEx TurretYawMotor;
+    private Servo TurretPitch;
+    private Servo BallLifter;
     double RotationRatio;
     double GearRatio;
     private float SteeringAggressiveness;
@@ -35,10 +35,9 @@ public class RobotControl extends OpMode{
     private float MaxLauncherSpeed;
     private float MaxIntakeVelocity;
     private float MaxBallMoverSpeed;
-    private float LeftStopPosition;
-    private float LeftOpenPosition;
-    private float RightStopPosition;
-    private float RightOpenPosition;
+    private float MaxTurretYawSpeed;
+    private float LifterUpperPosition;
+    private float LifterLowerPosition;
     private volatile Gamepad gamepad1 = null;
 
     private volatile Gamepad gamepad2 = null;
@@ -67,12 +66,13 @@ public class RobotControl extends OpMode{
         FrontLeftDrive = (DcMotorEx)(hardwareMap.get(DcMotor.class, "FrontLeftDrive"));
         BackLeftDrive = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BackLeftDrive"));
         BackRightDrive = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BackRightDrive"));
-        BallMover = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BallMover"));
+        //BallMover = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BallMover"));
         Intake = (DcMotorEx )(hardwareMap.get(DcMotor.class, "Intake"));
-        LeftLauncher = (DcMotorEx )(hardwareMap.get(DcMotor.class, "LeftLauncher"));
-        RightLauncher = (DcMotorEx )(hardwareMap.get(DcMotor.class, "RightLauncher"));
-        RightBallStop = hardwareMap.get(Servo.class, "RightBallStop");
-        LeftBallStop = hardwareMap.get(Servo.class, "LeftBallStop");
+        Launcher = (DcMotorEx )(hardwareMap.get(DcMotor.class, "TurretLauncher"));
+        TurretPitch = hardwareMap.get(Servo.class, "TurretPitch");
+        BallLifter = hardwareMap.get(Servo.class, "BallLifter");
+
+        TurretYawMotor = (DcMotorEx) (hardwareMap.get(DcMotor.class,"TurretYaw"));
 
         // Initialize the Vision System
         aprilTagWebcam.init(hardwareMap,telemetry);
@@ -94,24 +94,22 @@ public class RobotControl extends OpMode{
         BackLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         FrontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         FrontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        BallMover.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //BallMover.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        LeftLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        RightLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        TurretYawMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         FrontRightDrive.setDirection(DcMotor.Direction.FORWARD);
         BackRightDrive.setDirection(DcMotor.Direction.REVERSE);
         FrontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
         BackLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-        BallMover.setDirection(DcMotor.Direction.FORWARD);
+        //BallMover.setDirection(DcMotor.Direction.FORWARD);
         Intake.setDirection(DcMotor.Direction.FORWARD);
-        LeftLauncher.setDirection(DcMotor.Direction.REVERSE);
-        RightLauncher.setDirection(DcMotor.Direction.FORWARD);
+        Launcher.setDirection(DcMotor.Direction.FORWARD);
+        TurretYawMotor.setDirection(DcMotor.Direction.FORWARD);
         // Control Parameters
-        LeftStopPosition = 0.75f;
-        LeftOpenPosition = 0.5f;
-        RightStopPosition = 0.5f;
-        RightOpenPosition = 0.75f;
+        LifterUpperPosition = 0.75f;
+        LifterLowerPosition = 0.5f;
         TempRange_cm = 0; // Init to zero
 
         RotationRatio = 11.1;
@@ -124,9 +122,10 @@ public class RobotControl extends OpMode{
         ForwardAggressiveness = 2500;
         StrafingAggressiveness = 2500;
         InvertControllers = false;
-        MaxLauncherSpeed = 3000;
+        MaxLauncherSpeed = 6000;
         MaxIntakeVelocity = 2000;
         MaxBallMoverSpeed = 3000;
+        MaxTurretYawSpeed = 3000;
     }
     public void StopRobot()
     {
@@ -134,10 +133,10 @@ public class RobotControl extends OpMode{
         FrontRightDrive.setVelocity(0);
         BackLeftDrive.setVelocity(0);
         BackRightDrive.setVelocity(0);
-        BallMover.setVelocity(0);
+        //BallMover.setVelocity(0);
         Intake.setVelocity(0);
-        LeftLauncher.setVelocity(0);
-        RightLauncher.setVelocity(0);
+        Launcher.setVelocity(0);
+        TurretYawMotor.setVelocity(0);
     }
     public void RobotMoveAtSpeed(float ForwardVelocity, float CWRotationalVelocity, float RightVelocity, float MoveTime_sec) {
         telemetry.addLine("calledFunction");
@@ -184,25 +183,27 @@ public class RobotControl extends OpMode{
         telemetry.addLine("done");
     }
 
+    private void SetIntakeState(boolean IsIntakeEnabled)
+    {
+
+    }
     /**
      * Describe this function...
      */
     public void LaunchBalls(int SpinUpTime_sec, int LaunchTime_sec, int LauncherSpeed) {
         // Spin up the Launcher
-        ((DcMotorEx) LeftLauncher).setVelocity(LauncherSpeed);
-        ((DcMotorEx) RightLauncher).setVelocity(LauncherSpeed);
+        ((DcMotorEx) Launcher).setVelocity(LauncherSpeed);
         RunTimer_sec.reset();
         while (RunTimer_sec.seconds() < SpinUpTime_sec) {
         }
         // Open the Gates
 
-        ((DcMotorEx) BallMover).setVelocity(MaxBallMoverSpeed);
+        //((DcMotorEx) BallMover).setVelocity(MaxBallMoverSpeed);
         RunTimer_sec.reset();
         while (RunTimer_sec.seconds() < LaunchTime_sec) {
         }
-        ((DcMotorEx) RightLauncher).setVelocity(0);
-        ((DcMotorEx) LeftLauncher).setVelocity(0);
-        ((DcMotorEx) BallMover).setVelocity(0);
+        ((DcMotorEx) Launcher).setVelocity(0);
+        //((DcMotorEx) BallMover).setVelocity(0);
     }
     public void LaunchBallsWithCamera(int TargetTime_s) {
 
@@ -222,35 +223,40 @@ public class RobotControl extends OpMode{
                 LauncherSpeedCmd = 1600 + 3.61f * (TempRange_cm - 147);
             }
             // Spin up the Launcher
-            ((DcMotorEx) LeftLauncher).setVelocity(LauncherSpeedCmd);
-            ((DcMotorEx) RightLauncher).setVelocity(LauncherSpeedCmd);
-        }
-        // Spin up the Launcher
-        ((DcMotorEx) LeftLauncher).setVelocity(LauncherSpeed);
-        ((DcMotorEx) RightLauncher).setVelocity(LauncherSpeed);
-        RunTimer_sec.reset();
-        while (RunTimer_sec.seconds() < SpinUpTime_sec) {
-        }
-        // Open the Gates
-
-        ((DcMotorEx) BallMover).setVelocity(MaxBallMoverSpeed);
-        RunTimer_sec.reset();
-        while (RunTimer_sec.seconds() < LaunchTime_sec) {
+            ((DcMotorEx) Launcher).setVelocity(LauncherSpeedCmd);
+       }
+//        // Spin up the Launcher
+//        ((DcMotorEx) LeftLauncher).setVelocity(LauncherSpeed);
+//        ((DcMotorEx) Launcher).setVelocity(LauncherSpeed);
+//        RunTimer_sec.reset();
+//        while (RunTimer_sec.seconds() < SpinUpTime_sec) {
+//        }
+//        // Open the Gates
+//
+//        ((DcMotorEx) BallMover).setVelocity(MaxBallMoverSpeed);
+//        RunTimer_sec.reset();
+//        while (RunTimer_sec.seconds() < LaunchTime_sec) {
+//    }
+//        ((DcMotorEx) Launcher).setVelocity(0);
+//        ((DcMotorEx) LeftLauncher).setVelocity(0);
+//        ((DcMotorEx) BallMover).setVelocity(0);
     }
-        ((DcMotorEx) RightLauncher).setVelocity(0);
-        ((DcMotorEx) LeftLauncher).setVelocity(0);
-        ((DcMotorEx) BallMover).setVelocity(0);
+    public void AimHigh()
+    {
+        TurretPitch.setPosition(0.75);
+    }
+    public void AimLow()
+    {
+        TurretPitch.setPosition(0.25);
     }
     // Manual TeleOp Commands
-    public void OpenGate()
+    public void LowerPosition()
     {
-        RightBallStop.setPosition(RightOpenPosition);
-        LeftBallStop.setPosition(LeftOpenPosition);
+        BallLifter.setPosition(LifterLowerPosition);
     }
-    public void CloseGate()
+    public void UpperPosition()
     {
-        RightBallStop.setPosition(RightStopPosition);
-        LeftBallStop.setPosition(LeftStopPosition);
+        BallLifter.setPosition(LifterUpperPosition);
     }
     public void SetDriveMotionCmds(float ForwardSpeed, float RightSpeed, float ClockwiseSpeed)
     {
@@ -262,19 +268,20 @@ public class RobotControl extends OpMode{
     public void SetLaunchControlCmds(float intakeVelocity, float BallMoverSpeedCmd, float LauncherSpeedCmd)
     {
         Intake.setVelocity(intakeVelocity);
-        BallMover.setVelocity(BallMoverSpeedCmd);
-        RightLauncher.setVelocity(LauncherSpeedCmd);
-        LeftLauncher.setVelocity(LauncherSpeedCmd);
+        //BallMover.setVelocity(BallMoverSpeedCmd);
+        Launcher.setVelocity(LauncherSpeedCmd);
     }
     public void RunTeleOp()
     {
 
         AprilTagDetection GoalLocation = this.UpdateGoalLocation();
         // Invert As Needed
-        if (gamepad1.right_bumper) {
-            InvertControllers = true;
+        if (gamepad2.left_bumper) {
+            TurretPitch.setPosition(0.75);
+            telemetry.addLine("Aim High");
         } else {
-            InvertControllers = false;
+            TurretPitch.setPosition(0.25);
+            telemetry.addLine("Aim Low");
         }
 
 
@@ -331,6 +338,10 @@ public class RobotControl extends OpMode{
         } else {
             IntakeVelocityCmd = 0;
         }
+        // ------------------------------------------------------------
+        // TURRET YAW VELOCITY
+        float TurretYawVelocity = gamepad2.right_stick_x*MaxTurretYawSpeed;
+        TurretYawMotor.setVelocity((TurretYawVelocity));
 
         // Launcher
         float LauncherSpeedCmd;
@@ -346,13 +357,7 @@ public class RobotControl extends OpMode{
             LauncherSpeedCmd = 1600 + 3.61f*(TempRange_cm - 147);
         }
         else {
-            if (gamepad2.left_bumper) {
-                LauncherSpeedCmd = MaxLauncherSpeed;
-            } else if (gamepad2.right_bumper) {
-                LauncherSpeedCmd = MaxLauncherSpeed * 0.54f;
-            } else {
-                LauncherSpeedCmd = MaxLauncherSpeed * gamepad2.right_trigger;
-            }
+            LauncherSpeedCmd = MaxLauncherSpeed*gamepad2.right_trigger ;
         }
         // Ball mover
         float BallMoverSpeedCmd;
@@ -366,9 +371,9 @@ public class RobotControl extends OpMode{
 
         // Gate
         if (gamepad2.dpad_right) {
-            this.OpenGate();
+            this.UpperPosition();
         } else {
-            this.CloseGate();
+            this.LowerPosition();
         }
         // Output Commands
         this.SetLaunchControlCmds(IntakeVelocityCmd,BallMoverSpeedCmd,LauncherSpeedCmd);

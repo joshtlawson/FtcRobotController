@@ -18,13 +18,13 @@ public class AUTORed3SingleMove extends OpMode {
         telemetry.addLine("Autonomous Active");
         telemetry.update();
         telemetry.update();
-        Robo.OpenGate();
+        //Robo.OpenGate();
         // move to the launch line
-        Robo.RobotMoveAtSpeed(-30, 0, 0, 1.4);
+        Robo.RobotMoveAtSpeed(-30, 0, 0, 1.4f);
         // align with the goal
-        Robo.RobotMoveAtSpeed(-20, -23, 0, 2.1);
+        Robo.RobotMoveAtSpeed(-20, -23, 0, 2.1f);
         // launch
-        Robo.LaunchBalls(2, 3, 2500,1000);
+        Robo.LaunchBalls(2, 3, 2500);
         // move the gate
         Robo.RobotMoveDistance(0, 45, 0, 5);
         // line up with the gate

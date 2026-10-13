@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp
-public class TeleOp25_26Season_Red extends OpMode {
+public class TeleOp26_27Season_Red extends OpMode {
     private RobotControl Robo = new RobotControl();
     private ElapsedTime runtime = new ElapsedTime();
     /**
