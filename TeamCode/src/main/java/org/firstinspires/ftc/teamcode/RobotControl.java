@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.internal.opmode.TelemetryImpl;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
@@ -45,6 +46,7 @@ public class RobotControl extends OpMode{
     private float TargetingAggressiveness;
     private float TempRange_cm;
     private float LastGoalDetected_ms;
+
  private HardwareMap hardwareMap;
     ElapsedTime RunTimer_sec = new ElapsedTime();
 
@@ -161,7 +163,7 @@ public class RobotControl extends OpMode{
     /**
      * Describe this function...
      */
-    public void RobotMoveDistance(int Forward_in, int Rotate_cw_degrees, int Lateral_right_in, int waitTime_sec) {
+    public void RobotMoveDistance(float Forward_in, int Rotate_cw_degrees, float Lateral_right_in, int waitTime_sec) {
         telemetry.addLine("calledFunction");
         BackLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         FrontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -183,9 +185,11 @@ public class RobotControl extends OpMode{
         telemetry.addLine("done");
     }
 
-    private void SetIntakeState(boolean IsIntakeEnabled)
+    private void SetIntakeState(float  SpeedCmd_rpm)
     {
-
+        float RPM2DPS = 360f/60f;
+        Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        Intake.setVelocity(SpeedCmd_rpm*RPM2DPS, AngleUnit.DEGREES);
     }
     /**
      * Describe this function...
@@ -270,6 +274,102 @@ public class RobotControl extends OpMode{
         Intake.setVelocity(intakeVelocity);
         //BallMover.setVelocity(BallMoverSpeedCmd);
         Launcher.setVelocity(LauncherSpeedCmd);
+    }
+    public void IntakeNewBalls()
+    {
+        float IntakeSpeed_rpm = 900;
+        float ForwardSpeed_ips = 1;
+        float ShiftRight_in = 12;
+        int AttemptRepeatsCount = 1;
+
+        int AttemptNum = 0;
+        // Start Intake
+        this.SetIntakeState(IntakeSpeed_rpm);
+        // Move Forward Slowly
+        this.RobotMoveAtSpeed(ForwardSpeed_ips,0,0,5);
+        for (AttemptNum = 0; AttemptNum < AttemptRepeatsCount; AttemptNum++) {
+            // Backup
+            this.RobotMoveDistance(12,0,0,5);
+            // Shift Laterally
+            this.RobotMoveDistance(0,0,ShiftRight_in,5);
+            // Move Forward Slowly
+            this.RobotMoveAtSpeed(ForwardSpeed_ips,0,0,5);
+        }
+        // Stop Intake
+        this.SetIntakeState(0);
+
+    }
+    public void MoveToStartingSequence(int SequenceNum)
+    {
+        switch(SequenceNum)
+        {
+            case 1:
+                // Action 1
+                this.RobotMoveDistance(24,0,0,5);
+                // Action 2
+                this.RobotMoveDistance(0, 45, 0, 5);
+                //Action 3
+                this.RobotMoveDistance(24, 0, 0, 5);
+                //Action 4
+                this.RobotMoveDistance(0, 90, 0, 5);
+                //Action 5
+                this.RobotMoveDistance(0, 0, 80, 5);
+                //Action 6
+                this.RobotMoveDistance(36, 0, 0, 5);
+                break;
+            case 2:
+                // Action 1
+                this.RobotMoveDistance(24,0,0,5);
+                // Action 2
+                this.RobotMoveDistance(0, 45, 0, 5);
+                //Action 3
+                this.RobotMoveDistance(24, 0, 0, 5);
+                //Action 4
+                this.RobotMoveDistance(0, 90, 0, 5);
+                //Action 5
+                this.RobotMoveDistance(0, 0, 80, 5);
+                //Action 6
+                this.RobotMoveDistance(36, 0, 0, 5);
+                break;
+            case 3:
+                // Action 1
+                this.RobotMoveDistance(24,0,0,5);
+                // Action 2
+                this.RobotMoveDistance(0, 45, 0, 5);
+                //Action 3
+                this.RobotMoveDistance(24, 0, 0, 5);
+                //Action 4
+                this.RobotMoveDistance(0, 90, 0, 5);
+                //Action 5
+                this.RobotMoveDistance(0, 0, 80, 5);
+                //Action 6
+                this.RobotMoveDistance(36, 0, 0, 5);
+                break;
+            case 4:
+                // Action 1
+                this.RobotMoveDistance(24,0,0,5);
+                // Action 2
+                this.RobotMoveDistance(0, 45, 0, 5);
+                //Action 3
+                this.RobotMoveDistance(24, 0, 0, 5);
+                //Action 4
+                this.RobotMoveDistance(0, 90, 0, 5);
+                //Action 5
+                this.RobotMoveDistance(0, 0, 80, 5);
+                //Action 6
+                this.RobotMoveDistance(36, 0, 0, 5);
+                break;
+            case 5:
+                // Action 1
+                this.RobotMoveDistance(24,0,0,5);
+                //Action 2
+                this.RobotMoveDistance(0, 0, 80, 5);
+                //Action 3
+                this.RobotMoveDistance(36, 0, 0, 5);
+                break;
+
+        }
+
     }
     public void RunTeleOp()
     {

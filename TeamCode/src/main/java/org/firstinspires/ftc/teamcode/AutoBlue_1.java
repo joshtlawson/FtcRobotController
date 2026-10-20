@@ -45,22 +45,7 @@ public class AutoBlue_1 extends OpMode {
      */
     @Override
     public void loop() {
-        Robo.RunTeleOp();
-        // Action 1
-        Robo.RobotMoveDistance(24,0,0,5);
-        // Action 2
-        Robo.RobotMoveDistance(0, 0, 24, 5);
-        //Action 3
-        Robo.RobotMoveDistance(96, 0, 0, 5);
-        //Action 4
-        Robo.RobotMoveDistance(0, 0, -24, 5);
-        //Action 5
-        Robo.RobotMoveDistance(-12, 0, 0, 5);
-        //Action 6
-        Robo.LaunchBalls(3,5,1000);
-        //Action 7
-        Robo.RobotMoveDistance(0, 0, 80, 5);
-        //Action8
-        Robo.RobotMoveDistance(36, 0, 0, 5);
+        Robo.MoveToStartingSequence(1);
+        // TBD - Pickup New Balls and Launch Again
 }
 }
