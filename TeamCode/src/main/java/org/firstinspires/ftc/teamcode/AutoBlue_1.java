@@ -46,6 +46,11 @@ public class AutoBlue_1 extends OpMode {
     @Override
     public void loop() {
         Robo.MoveToStartingSequence(1);
-        // TBD - Pickup New Balls and Launch Again
+        // TBD - Launch Balls
+        // TBD - Move to Garden
+        // TBD - Pickup New Balls
+        Robo.IntakeNewBalls();
+        // TBD - Return to Launch Position
+        // TBD - Launch Balls
 }
 }

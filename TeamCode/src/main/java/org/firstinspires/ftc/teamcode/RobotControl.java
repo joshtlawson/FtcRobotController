@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.icu.text.CaseMap;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -10,11 +12,13 @@ import com.qualcomm.robotcore.hardware.MotorControlAlgorithm;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.internal.opmode.TelemetryImpl;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagMetadata;
 
 public class RobotControl extends OpMode{
     private DcMotorEx FrontRightDrive;
@@ -27,6 +31,9 @@ public class RobotControl extends OpMode{
     private DcMotorEx TurretYawMotor;
     private Servo TurretPitch;
     private Servo BallLifter;
+    private Servo FlowerRamp;
+    private boolean IsFlowerDown;
+    private boolean LastIsFlowerButtonPressed;
     double RotationRatio;
     double GearRatio;
     private float SteeringAggressiveness;
@@ -46,6 +53,7 @@ public class RobotControl extends OpMode{
     private float TargetingAggressiveness;
     private float TempRange_cm;
     private float LastGoalDetected_ms;
+    private AprilTagMetadata myAprilTagMetadata;
 
  private HardwareMap hardwareMap;
     ElapsedTime RunTimer_sec = new ElapsedTime();
@@ -73,6 +81,7 @@ public class RobotControl extends OpMode{
         Launcher = (DcMotorEx )(hardwareMap.get(DcMotor.class, "TurretLauncher"));
         TurretPitch = hardwareMap.get(Servo.class, "TurretPitch");
         BallLifter = hardwareMap.get(Servo.class, "BallLifter");
+        FlowerRamp = hardwareMap.get(Servo.class, "FlowerRamp");
 
         TurretYawMotor = (DcMotorEx) (hardwareMap.get(DcMotor.class,"TurretYaw"));
 
@@ -128,6 +137,9 @@ public class RobotControl extends OpMode{
         MaxIntakeVelocity = 2000;
         MaxBallMoverSpeed = 3000;
         MaxTurretYawSpeed = 3000;
+        IsFlowerDown = false;
+
+        myAprilTagMetadata = new AprilTagMetadata(55, "Blue1", 3.5, DistanceUnit.INCH);
     }
     public void StopRobot()
     {
@@ -252,6 +264,15 @@ public class RobotControl extends OpMode{
     public void AimLow()
     {
         TurretPitch.setPosition(0.25);
+    }
+
+    public void RaiseRamp()
+    {
+        FlowerRamp.setPosition(0.75);
+    }
+    public void LowerRamp()
+    {
+        FlowerRamp.setPosition(0.25);
     }
     // Manual TeleOp Commands
     public void LowerPosition()
@@ -384,6 +405,18 @@ public class RobotControl extends OpMode{
             telemetry.addLine("Aim Low");
         }
 
+        if (gamepad2.right_bumper && !LastIsFlowerButtonPressed) {
+            if(IsFlowerDown)
+            {
+                this.RaiseRamp();
+                IsFlowerDown = false;
+            }
+            else {
+                this.LowerRamp();
+                IsFlowerDown = true;
+            }
+        }
+        LastIsFlowerButtonPressed = gamepad2.right_bumper;
 
         // Drive Logic -----------------------------------------------------------------------
         // Remote Control Forward Cmds

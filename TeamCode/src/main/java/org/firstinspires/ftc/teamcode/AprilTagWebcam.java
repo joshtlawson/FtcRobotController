@@ -12,6 +12,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.vision.apriltag.AprilTagMetadata;
 
 import java.util.ArrayList;
 
@@ -50,7 +51,7 @@ public class AprilTagWebcam {
     public void displayDetectionTelemetry(AprilTagDetection detection){
 
                 if (detection != null) {
-                    telemetry.addLine(String.format("\n ===== ID %d) %s",detection.id,detection.metadata.name));
+                    //telemetry.addLine(String.format("\n ===== ID %d) %s",detection.id,detection.metadata.name));
                     //telemetry.addLine(String.format("XYZ = %6.1f %6.1f %6.1f (cm)",detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
                     //telemetry.addLine(String.format("PRY = %6.1f %6.1f %6.1f (deg)",detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
                     telemetry.addLine(String.format("RBE = %6.1f %6.1f %6.1f (cm, deg, cm)",detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
@@ -69,7 +70,7 @@ public class AprilTagWebcam {
     }
     public AprilTagDetection getTagBySpecified(int id) {
             for (AprilTagDetection detection : detectionTags){
-                if (detection.id == id){
+                if (detection.hashCode() == id){
                     return detection;
                 }
             }

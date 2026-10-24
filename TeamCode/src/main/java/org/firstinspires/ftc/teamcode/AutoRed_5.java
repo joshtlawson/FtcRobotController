@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 public class AutoRed_5 extends OpMode {
     private RobotControl Robo = new RobotControl();
     private ElapsedTime runtime = new ElapsedTime();
+
     /**
      * This sample contains the bare minimum Blocks for any regular OpMode. The 3 blue
      * Comment Blocks show where to place Initialization code (runs once, after touching the
@@ -20,9 +21,10 @@ public class AutoRed_5 extends OpMode {
      * Code to run ONCE when the driver hits INIT
      */
     public void init() {
-        Robo.InitRobot(hardwareMap,telemetry, RobotControl.AllianceColor.BLUE, gamepad1, gamepad2);
+        Robo.InitRobot(hardwareMap, telemetry, RobotControl.AllianceColor.BLUE, gamepad1, gamepad2);
 
     }
+
     /*
      * Code to run REPEATEDLY after the driver hits INIT, but before they hit START
      */
@@ -45,6 +47,11 @@ public class AutoRed_5 extends OpMode {
     @Override
     public void loop() {
         Robo.MoveToStartingSequence(5);
-        // TBD - Pickup New Balls and Launch Again
-}
+        // TBD - Launch Balls
+        // TBD - Move to Garden
+        // TBD - Pickup New Balls
+        Robo.IntakeNewBalls();
+        // TBD - Return to Launch Position
+        // TBD - Launch Balls
+    }
 }
