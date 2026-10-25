@@ -139,7 +139,6 @@ public class RobotControl extends OpMode{
         MaxTurretYawSpeed = 3000;
         IsFlowerDown = false;
 
-        myAprilTagMetadata = new AprilTagMetadata(55, "Blue1", 3.5, DistanceUnit.INCH);
     }
     public void StopRobot()
     {

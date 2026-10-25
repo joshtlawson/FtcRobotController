@@ -13,6 +13,8 @@ import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagMetadata;
+import org.firstinspires.ftc.vision.apriltag.AprilTagSingleDetection;
+
 
 import java.util.ArrayList;
 
@@ -70,8 +72,11 @@ public class AprilTagWebcam {
     }
     public AprilTagDetection getTagBySpecified(int id) {
             for (AprilTagDetection detection : detectionTags){
-                if (detection.hashCode() == id){
-                    return detection;
+                if (detection instanceof AprilTagSingleDetection) {
+                AprilTagSingleDetection singleDet = (AprilTagSingleDetection) detection;
+                    if (singleDet.metadata.id == id){
+                        return detection;
+                    }
                 }
             }
             return null;
