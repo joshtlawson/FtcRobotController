@@ -17,6 +17,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.internal.opmode.TelemetryImpl;
+import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagMetadata;
 
@@ -53,7 +54,7 @@ public class RobotControl extends OpMode{
     private float TargetingAggressiveness;
     private float TempRange_cm;
     private float LastGoalDetected_ms;
-    private AprilTagMetadata myAprilTagMetadata;
+    private AllianceColor ActiveAlliance;
 
  private HardwareMap hardwareMap;
     ElapsedTime RunTimer_sec = new ElapsedTime();
@@ -68,6 +69,7 @@ public class RobotControl extends OpMode{
     private int goalTagID;
     public void InitRobot(HardwareMap hardwareMap, Telemetry telemetry, AllianceColor alliance,Gamepad gamepad1,Gamepad gamepad2)
     {
+        ActiveAlliance = alliance;
         this.telemetry = telemetry;
         this.gamepad1 = gamepad1;
         this.gamepad2 = gamepad2;
@@ -87,12 +89,7 @@ public class RobotControl extends OpMode{
 
         // Initialize the Vision System
         aprilTagWebcam.init(hardwareMap,telemetry);
-        if(alliance == RobotControl.AllianceColor.RED){
-            goalTagID = 24;
-        }
-        else {
-            goalTagID = 20;
-        }
+
 
         // Setup the PID Tuning
         ((DcMotorEx) FrontRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
@@ -164,10 +161,10 @@ public class RobotControl extends OpMode{
         }
         telemetry.addLine("done");
     }
-    public AprilTagDetection UpdateGoalLocation()
+    public AprilTagClusterDetection UpdateGoalLocation(RobotControl.AllianceColor Alliance)
     {
         aprilTagWebcam.update();
-        AprilTagDetection GoalID = aprilTagWebcam.getTagBySpecified(goalTagID);
+        AprilTagClusterDetection GoalID = aprilTagWebcam.getClusterDetection(Alliance);
         aprilTagWebcam.displayDetectionTelemetry(GoalID);
         return GoalID;
     }
@@ -227,7 +224,7 @@ public class RobotControl extends OpMode{
         RunTimer_sec.reset();
         while (RunTimer_sec.seconds() < TargetTime_s) {
 
-            AprilTagDetection GoalLocation = this.UpdateGoalLocation();
+            AprilTagClusterDetection GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
             if (GoalLocation != null) {
                 ClockwiseVelocityCmd = -(float) (GoalLocation.ftcPose.bearing) * TargetingAggressiveness;
             }
@@ -393,8 +390,7 @@ public class RobotControl extends OpMode{
     }
     public void RunTeleOp()
     {
-
-        AprilTagDetection GoalLocation = this.UpdateGoalLocation();
+        AprilTagClusterDetection GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
         // Invert As Needed
         if (gamepad2.left_bumper) {
             TurretPitch.setPosition(0.75);
