@@ -130,7 +130,7 @@ public class RobotControl extends OpMode{
         ForwardAggressiveness = 2500;
         StrafingAggressiveness = 2500;
         InvertControllers = false;
-        MaxLauncherSpeed = 6000;
+        MaxLauncherSpeed = -5000;
         MaxIntakeVelocity = 2000;
         MaxBallMoverSpeed = 3000;
         MaxTurretYawSpeed = 3000;
