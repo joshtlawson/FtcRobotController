@@ -11,6 +11,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.MotorControlAlgorithm;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
@@ -33,6 +35,8 @@ public class RobotControl extends OpMode{
     private Servo TurretPitch;
     private Servo BallLifter;
     private Servo FlowerRamp;
+    private ColorSensor colorSensor;
+    private TouchSensor YawLimitSensor;
     private boolean IsFlowerDown;
     private boolean LastIsFlowerButtonPressed;
     double RotationRatio;
@@ -89,8 +93,9 @@ public class RobotControl extends OpMode{
 
         // Initialize the Vision System
         aprilTagWebcam.init(hardwareMap,telemetry);
-
-
+        // Initialize Sensors
+        colorSensor = (ColorSensor)(hardwareMap.get(ColorSensor.class,"ColorSensor"));
+        YawLimitSensor = (TouchSensor)(hardwareMap.get(TouchSensor.class,"YawLimitSwitch"));
         // Setup the PID Tuning
         ((DcMotorEx) FrontRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
         ((DcMotorEx) FrontLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
