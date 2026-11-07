@@ -32,10 +32,10 @@ public class RobotControl extends OpMode{
     private DcMotorEx Intake;
     private DcMotorEx Launcher;
     private DcMotorEx TurretYawMotor;
-    private Servo TurretPitch;
+    private Servo LauncherThroat;
     private Servo BallLifter;
     private Servo FlowerRamp;
-    private ColorSensor colorSensor;
+    private ColorSensor BallColor;
     private TouchSensor YawLimitSensor;
     private boolean IsFlowerDown;
     private boolean LastIsFlowerButtonPressed;
@@ -59,6 +59,7 @@ public class RobotControl extends OpMode{
     private float TempRange_cm;
     private float LastGoalDetected_ms;
     private AllianceColor ActiveAlliance;
+    private BallType LastSeenBall;
 
  private HardwareMap hardwareMap;
     ElapsedTime RunTimer_sec = new ElapsedTime();
@@ -68,6 +69,11 @@ public class RobotControl extends OpMode{
     public enum AllianceColor{
         RED,
         BLUE
+    };
+    public enum BallType{
+        UNKNOWN,
+        NECTAR,
+        POLLEN
     };
 
     private int goalTagID;
@@ -85,7 +91,7 @@ public class RobotControl extends OpMode{
         //BallMover = (DcMotorEx )(hardwareMap.get(DcMotor.class, "BallMover"));
         Intake = (DcMotorEx )(hardwareMap.get(DcMotor.class, "Intake"));
         Launcher = (DcMotorEx )(hardwareMap.get(DcMotor.class, "TurretLauncher"));
-        TurretPitch = hardwareMap.get(Servo.class, "TurretPitch");
+        LauncherThroat = hardwareMap.get(Servo.class, "LauncherThroat");
         BallLifter = hardwareMap.get(Servo.class, "BallLifter");
         FlowerRamp = hardwareMap.get(Servo.class, "FlowerRamp");
 
@@ -94,8 +100,8 @@ public class RobotControl extends OpMode{
         // Initialize the Vision System
         aprilTagWebcam.init(hardwareMap,telemetry);
         // Initialize Sensors
-        colorSensor = (ColorSensor)(hardwareMap.get(ColorSensor.class,"ColorSensor"));
-        YawLimitSensor = (TouchSensor)(hardwareMap.get(TouchSensor.class,"YawLimitSwitch"));
+        BallColor = (ColorSensor)(hardwareMap.get(ColorSensor.class,"ColorSensor"));
+        YawLimitSensor = (TouchSensor)(hardwareMap.get(TouchSensor.class,"YawLimitSW"));
         // Setup the PID Tuning
         ((DcMotorEx) FrontRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
         ((DcMotorEx) FrontLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
@@ -140,6 +146,7 @@ public class RobotControl extends OpMode{
         MaxBallMoverSpeed = 3000;
         MaxTurretYawSpeed = 3000;
         IsFlowerDown = false;
+        LastSeenBall = BallType.POLLEN;
 
     }
     public void StopRobot()
@@ -258,13 +265,13 @@ public class RobotControl extends OpMode{
 //        ((DcMotorEx) LeftLauncher).setVelocity(0);
 //        ((DcMotorEx) BallMover).setVelocity(0);
     }
-    public void AimHigh()
+    public void SetNectorPosition()
     {
-        TurretPitch.setPosition(0.75);
+        LauncherThroat.setPosition(0.65);
     }
-    public void AimLow()
+    public void SetPollenPosition()
     {
-        TurretPitch.setPosition(0.25);
+        LauncherThroat.setPosition(0.35);
     }
 
     public void RaiseRamp()
@@ -398,11 +405,38 @@ public class RobotControl extends OpMode{
         AprilTagClusterDetection GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
         // Invert As Needed
         if (gamepad2.left_bumper) {
-            TurretPitch.setPosition(0.75);
-            telemetry.addLine("Aim High");
+            this.SetNectorPosition();
+            telemetry.addLine("NECTOR Position");
         } else {
-            TurretPitch.setPosition(0.25);
-            telemetry.addLine("Aim Low");
+            this.SetPollenPosition();
+            telemetry.addLine("POLLEN Position");
+        }
+        telemetry.addData("Detected Red: ",BallColor.red());
+        telemetry.addData(" | Green: ",BallColor.green());
+        telemetry.addData(" | Blue: ",BallColor.blue());
+        telemetry.addLine();
+        int VisibleThreshold = 300;
+        if (BallColor.red() > VisibleThreshold || BallColor.blue() > VisibleThreshold || BallColor.green()> VisibleThreshold)
+        { //Ball Detected
+            if (BallColor.blue() > 2 * BallColor.green() && BallColor.blue() > 2 * BallColor.red())
+            {// Probably a Blue Ball
+                LastSeenBall = BallType.NECTAR;
+            }
+            else if(BallColor.red() > BallColor.green() && BallColor.red() > 2 * BallColor.blue())
+            { // Probably Red
+                LastSeenBall = BallType.NECTAR;
+            }
+            else
+            { // We think by elimination it's yellow
+                LastSeenBall = BallType.POLLEN;
+            }
+        }
+        if (LastSeenBall == BallType.NECTAR) {
+            telemetry.addLine("Nectar Detected");
+        } else if (LastSeenBall == BallType.POLLEN) {
+            telemetry.addLine("Pollen Detected");
+        } else {
+            telemetry.addLine("Unknown Detected");
         }
 
         if (gamepad2.right_bumper && !LastIsFlowerButtonPressed) {
