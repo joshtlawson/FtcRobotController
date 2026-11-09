@@ -300,7 +300,7 @@ public class RobotControl extends OpMode{
     }
     public void SetLaunchControlCmds(float intakeVelocity, float BallMoverSpeedCmd, float LauncherSpeedCmd)
     {
-        Intake.setVelocity(intakeVelocity);
+
         //BallMover.setVelocity(BallMoverSpeedCmd);
         Launcher.setVelocity(LauncherSpeedCmd);
     }
@@ -400,17 +400,9 @@ public class RobotControl extends OpMode{
         }
 
     }
-    public void RunTeleOp()
+    public void DetectColors()
     {
-        AprilTagClusterDetection GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
-        // Invert As Needed
-        if (gamepad2.left_bumper) {
-            this.SetNectorPosition();
-            telemetry.addLine("NECTOR Position");
-        } else {
-            this.SetPollenPosition();
-            telemetry.addLine("POLLEN Position");
-        }
+
         telemetry.addData("Detected Red: ",BallColor.red());
         telemetry.addData(" | Green: ",BallColor.green());
         telemetry.addData(" | Blue: ",BallColor.blue());
@@ -438,7 +430,52 @@ public class RobotControl extends OpMode{
         } else {
             telemetry.addLine("Unknown Detected");
         }
+    }
+    public void SetThroatPosition()
+    {// Invert As Needed
+        this.DetectColors();
+        // Manual Throat Position Setting
+        if (gamepad2.left_bumper) {
+            this.SetNectorPosition();
+            telemetry.addLine("NECTOR Position");
+        } else {
+            this.SetPollenPosition();
+            telemetry.addLine("POLLEN Position");
+        }
+        if (gamepad2.left_trigger_pressed){
+            if( LastSeenBall == BallType.NECTAR) {
+                this.SetNectorPosition();
+                telemetry.addLine("NECTOR Position");
+            }
+            else if(LastSeenBall == BallType.POLLEN){
+                this.SetPollenPosition();
+                telemetry.addLine("POLLEN Position");
+            }
+        }
+    }
+    public void SetDriveCommands()
+    {
+        // Drive Logic -----------------------------------------------------------------------
+        // Remote Control Forward Cmds
+        float ForwardSpeedCmd = (-gamepad1.left_stick_y)*ForwardAggressiveness;
+        // Remote Control Strafing Cmds
+        float RightSpeedCmd ;
+        if (gamepad1.left_trigger > 0) {
+            RightSpeedCmd  = -(gamepad1.left_trigger * StrafingAggressiveness);
+        } else if (gamepad1.right_trigger > 0) {
+            RightSpeedCmd  = gamepad1.right_trigger * StrafingAggressiveness;
+        } else {
+            RightSpeedCmd  = 0;
+        }
+        float ClockwiseVelocityCmd = 0;
+        // Remote Control Turning Cmds
+        ClockwiseVelocityCmd = gamepad1.right_stick_x*SteeringAggressiveness;
 
+        this.SetDriveMotionCmds(ForwardSpeedCmd, RightSpeedCmd, ClockwiseVelocityCmd);
+    }
+    public void SetRampCommand()
+    {
+        // Sets the ramp Position
         if (gamepad2.right_bumper && !LastIsFlowerButtonPressed) {
             if(IsFlowerDown)
             {
@@ -451,51 +488,9 @@ public class RobotControl extends OpMode{
             }
         }
         LastIsFlowerButtonPressed = gamepad2.right_bumper;
-
-        // Drive Logic -----------------------------------------------------------------------
-        // Remote Control Forward Cmds
-        float ForwardSpeedCmd = (-gamepad1.left_stick_y)*ForwardAggressiveness;
-        if (InvertControllers)
-            ForwardSpeedCmd = -ForwardSpeedCmd;
-
-        // Remote Control Strafing Cmds
-        float RightSpeedCmd ;
-        if (gamepad1.left_trigger > 0) {
-            RightSpeedCmd  = -(gamepad1.left_trigger * StrafingAggressiveness);
-        } else if (gamepad1.right_trigger > 0) {
-            RightSpeedCmd  = gamepad1.right_trigger * StrafingAggressiveness;
-        } else {
-            RightSpeedCmd  = 0;
-        }
-        if (InvertControllers)
-            RightSpeedCmd = -RightSpeedCmd;
-        float ClockwiseVelocityCmd = 0;
-        if (gamepad1.left_bumper && GoalLocation != null)
-        {
-            gamepad1.rumble(200,200,200);
-            gamepad2.rumble(200,200,200);
-            telemetry.addLine("Targeting Status: ACTIVE");
-            ClockwiseVelocityCmd = -(float)(GoalLocation.ftcPose.bearing) * TargetingAggressiveness;
-        }
-        else
-        {
-            gamepad1.stopRumble();
-            gamepad2.stopRumble();
-            if( GoalLocation == null){
-                telemetry.addLine("Targeting Status: NOT READY");
-            }
-            else
-            {
-                telemetry.addLine("Targeting Status: READY");
-            }
-            // Remote Control Turning Cmds
-            ClockwiseVelocityCmd = gamepad1.right_stick_x*SteeringAggressiveness;
-        }
-
-
-        this.SetDriveMotionCmds(ForwardSpeedCmd, RightSpeedCmd, ClockwiseVelocityCmd);
-
-
+    }
+    public void SetIntakeCommand()
+    {
         // Intake Logic -----------------------------------------------------------------------
         float IntakeVelocityCmd;
         if (gamepad2.dpad_down) {
@@ -505,6 +500,29 @@ public class RobotControl extends OpMode{
         } else {
             IntakeVelocityCmd = 0;
         }
+        Intake.setVelocity(IntakeVelocityCmd);
+    }
+    public void RunTeleOp()
+    {
+        AprilTagClusterDetection GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
+
+        // Sets the Turret Throat Position
+        this.SetThroatPosition();
+        this.SetRampCommand();
+        this.SetDriveCommands();
+        this.SetIntakeCommand();
+
+//            gamepad1.stopRumble();
+//            gamepad2.stopRumble();
+//            if( GoalLocation == null){
+//                telemetry.addLine("Targeting Status: NOT READY");
+//            }
+//            else
+//            {
+//                telemetry.addLine("Targeting Status: READY");
+//            }
+
+
         // ------------------------------------------------------------
         // TURRET YAW VELOCITY
         float TurretYawVelocity = gamepad2.right_stick_x*MaxTurretYawSpeed;
@@ -551,6 +569,7 @@ public class RobotControl extends OpMode{
                 ForwardSpeedCmd, RightSpeedCmd,ClockwiseVelocityCmd);
 
     }
+
     @Override
     public void init() {
 
