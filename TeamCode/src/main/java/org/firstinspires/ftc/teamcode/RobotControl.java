@@ -60,6 +60,7 @@ public class RobotControl extends OpMode{
     private float LastGoalDetected_ms;
     private AllianceColor ActiveAlliance;
     private BallType LastSeenBall;
+    private AprilTagClusterDetection GoalLocation;
 
  private HardwareMap hardwareMap;
     ElapsedTime RunTimer_sec = new ElapsedTime();
@@ -302,7 +303,6 @@ public class RobotControl extends OpMode{
     {
 
         //BallMover.setVelocity(BallMoverSpeedCmd);
-        Launcher.setVelocity(LauncherSpeedCmd);
     }
     public void IntakeNewBalls()
     {
@@ -472,11 +472,13 @@ public class RobotControl extends OpMode{
         ClockwiseVelocityCmd = gamepad1.right_stick_x*SteeringAggressiveness;
 
         this.SetDriveMotionCmds(ForwardSpeedCmd, RightSpeedCmd, ClockwiseVelocityCmd);
+        telemetry.addData("Velocity Cmds", "Forward (%.2f), Rightward (%.2f), ClockWise (%.2f)",
+                ForwardSpeedCmd, RightSpeedCmd,ClockwiseVelocityCmd);
     }
     public void SetRampCommand()
     {
         // Sets the ramp Position
-        if (gamepad2.right_bumper && !LastIsFlowerButtonPressed) {
+        if (gamepad2.a && !LastIsFlowerButtonPressed) {
             if(IsFlowerDown)
             {
                 this.RaiseRamp();
@@ -488,6 +490,33 @@ public class RobotControl extends OpMode{
             }
         }
         LastIsFlowerButtonPressed = gamepad2.right_bumper;
+    }
+    public void SetLaunchCommand()
+    {
+        // Launcher
+        float LauncherSpeedCmd;
+        if(gamepad2.right_bumper && (GoalLocation != null || TempRange_cm !=0))
+        {
+            if(GoalLocation != null) {
+                TempRange_cm = (float) (GoalLocation.ftcPose.range);
+                gamepad1.rumble(100);
+                gamepad2.rumble(100);
+            }
+            if(TempRange_cm < 147)
+            {
+                TempRange_cm = 147;
+            }
+            // Need to Fix for '26/27
+            LauncherSpeedCmd = 1600 + 3.61f*(TempRange_cm - 147);
+        }
+        else {
+            gamepad1.stopRumble();
+            gamepad2.stopRumble();
+            LauncherSpeedCmd = MaxLauncherSpeed*gamepad2.right_trigger ;
+        }
+        Launcher.setVelocity(LauncherSpeedCmd);
+
+        telemetry.addData("Launcher Velocity: (%.2f)",LauncherSpeedCmd);
     }
     public void SetIntakeCommand()
     {
@@ -502,71 +531,31 @@ public class RobotControl extends OpMode{
         }
         Intake.setVelocity(IntakeVelocityCmd);
     }
+    public void SetTurretYawCommand()
+    {
+        float TurretYawVelocity = gamepad2.right_stick_x*MaxTurretYawSpeed;
+        TurretYawMotor.setVelocity((TurretYawVelocity));
+    }
+
     public void RunTeleOp()
     {
-        AprilTagClusterDetection GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
+        GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
 
         // Sets the Turret Throat Position
         this.SetThroatPosition();
         this.SetRampCommand();
         this.SetDriveCommands();
         this.SetIntakeCommand();
+        this.SetTurretYawCommand();
+        this.SetLaunchCommand();
 
-//            gamepad1.stopRumble();
-//            gamepad2.stopRumble();
-//            if( GoalLocation == null){
-//                telemetry.addLine("Targeting Status: NOT READY");
-//            }
-//            else
-//            {
-//                telemetry.addLine("Targeting Status: READY");
-//            }
-
-
-        // ------------------------------------------------------------
-        // TURRET YAW VELOCITY
-        float TurretYawVelocity = gamepad2.right_stick_x*MaxTurretYawSpeed;
-        TurretYawMotor.setVelocity((TurretYawVelocity));
-
-        // Launcher
-        float LauncherSpeedCmd;
-        if(gamepad1.left_bumper && (GoalLocation != null || TempRange_cm !=0))
+        if( GoalLocation == null){
+            telemetry.addLine("Targeting Status: NOT READY");
+        }
+        else
         {
-            if(GoalLocation != null) {
-                TempRange_cm = (float) (GoalLocation.ftcPose.range);
-            }
-            if(TempRange_cm < 147)
-            {
-                TempRange_cm = 147;
-            }
-            LauncherSpeedCmd = 1600 + 3.61f*(TempRange_cm - 147);
+            telemetry.addLine("Targeting Status: READY");
         }
-        else {
-            LauncherSpeedCmd = MaxLauncherSpeed*gamepad2.right_trigger ;
-        }
-        // Ball mover
-        float BallMoverSpeedCmd;
-        if (gamepad2.cross) {
-            BallMoverSpeedCmd = -MaxBallMoverSpeed;
-        } else if (gamepad2.triangle) {
-            BallMoverSpeedCmd = MaxBallMoverSpeed;
-        } else {
-            BallMoverSpeedCmd = -(MaxBallMoverSpeed * gamepad2.right_stick_y);
-        }
-
-        // Gate
-        if (gamepad2.dpad_right) {
-            this.UpperPosition();
-        } else {
-            this.LowerPosition();
-        }
-        // Output Commands
-        this.SetLaunchControlCmds(IntakeVelocityCmd,BallMoverSpeedCmd,LauncherSpeedCmd);
-        telemetry.addData("Launcher Velocity: (%.2f)",LauncherSpeedCmd);
-        // Add some Telemetry
-        // Show the elapsed game time and wheel power.
-        telemetry.addData("Velocity Cmds", "Forward (%.2f), Rightward (%.2f), ClockWise (%.2f)",
-                ForwardSpeedCmd, RightSpeedCmd,ClockwiseVelocityCmd);
 
     }
 
