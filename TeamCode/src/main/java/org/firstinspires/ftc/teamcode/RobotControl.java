@@ -35,6 +35,8 @@ public class RobotControl extends OpMode{
     private Servo LauncherThroat;
     private Servo BallLifter;
     private Servo FlowerRamp;
+    private Servo DozerLeftServo;
+    private Servo DozerRightServo;
     private ColorSensor BallColor;
     private TouchSensor YawLimitSensor;
     private boolean IsFlowerDown;
@@ -51,6 +53,9 @@ public class RobotControl extends OpMode{
     private float MaxTurretYawSpeed;
     private float LifterUpperPosition;
     private float LifterLowerPosition;
+    private float DozerPosition;
+    private boolean LastXBtnState;
+    private boolean LastYBtnState;
     private volatile Gamepad gamepad1 = null;
 
     private volatile Gamepad gamepad2 = null;
@@ -96,6 +101,9 @@ public class RobotControl extends OpMode{
         BallLifter = hardwareMap.get(Servo.class, "BallLifter");
         FlowerRamp = hardwareMap.get(Servo.class, "FlowerRamp");
 
+        DozerLeftServo = hardwareMap.get(Servo.class, "DozerLeft");
+        DozerRightServo = hardwareMap.get(Servo.class, "DozerRight");
+
         TurretYawMotor = (DcMotorEx) (hardwareMap.get(DcMotor.class,"TurretYaw"));
 
         // Initialize the Vision System
@@ -131,6 +139,7 @@ public class RobotControl extends OpMode{
         LifterUpperPosition = 0.75f;
         LifterLowerPosition = 0.5f;
         TempRange_cm = 0; // Init to zero
+        DozerPosition = 0.5f;
 
         RotationRatio = 11.1;
         GearRatio = 41.25;
@@ -142,7 +151,7 @@ public class RobotControl extends OpMode{
         ForwardAggressiveness = 2500;
         StrafingAggressiveness = 2500;
         InvertControllers = false;
-        MaxLauncherSpeed = -5000;
+        MaxLauncherSpeed = -2500;
         MaxIntakeVelocity = 2000;
         MaxBallMoverSpeed = 3000;
         MaxTurretYawSpeed = 3000;
@@ -277,11 +286,17 @@ public class RobotControl extends OpMode{
 
     public void RaiseRamp()
     {
+        float DownPosition = 0.3f;
         FlowerRamp.setPosition(0.75);
+        DozerLeftServo.setPosition(1-DownPosition);
+        DozerRightServo.setPosition((DownPosition));
     }
     public void LowerRamp()
     {
+        float UpPosition = 0.73f;
         FlowerRamp.setPosition(0.25);
+        DozerLeftServo.setPosition(1-UpPosition);
+        DozerRightServo.setPosition((UpPosition));
     }
     // Manual TeleOp Commands
     public void LowerPosition()
@@ -478,7 +493,7 @@ public class RobotControl extends OpMode{
     public void SetRampCommand()
     {
         // Sets the ramp Position
-        if (gamepad2.a && !LastIsFlowerButtonPressed) {
+        if (gamepad2.aWasPressed()) {
             if(IsFlowerDown)
             {
                 this.RaiseRamp();
@@ -489,30 +504,60 @@ public class RobotControl extends OpMode{
                 IsFlowerDown = true;
             }
         }
-        LastIsFlowerButtonPressed = gamepad2.right_bumper;
     }
     public void SetLaunchCommand()
     {
         // Launcher
         float LauncherSpeedCmd;
-        if(gamepad2.right_bumper && (GoalLocation != null || TempRange_cm !=0))
+        if(gamepad1.a)
         {
-            if(GoalLocation != null) {
-                TempRange_cm = (float) (GoalLocation.ftcPose.range);
-                gamepad1.rumble(100);
-                gamepad2.rumble(100);
-            }
-            if(TempRange_cm < 147)
-            {
-                TempRange_cm = 147;
-            }
-            // Need to Fix for '26/27
-            LauncherSpeedCmd = 1600 + 3.61f*(TempRange_cm - 147);
+            LauncherSpeedCmd = -4000; //MaxLauncherSpeed
+        }
+        else if (gamepad1.b)
+        {
+            LauncherSpeedCmd = -3500; //MaxLauncherSpeed
+        }
+        else if (gamepad1.x)
+        {
+            LauncherSpeedCmd = -3000; //MaxLauncherSpeed
+        }
+        else if (gamepad1.y)
+        {
+            LauncherSpeedCmd = -2500; //MaxLauncherSpeed
+        }
+        else if (gamepad1.dpad_up)
+        {
+            LauncherSpeedCmd = -2000; //MaxLauncherSpeed
+        }
+        else if (gamepad1.dpad_right)
+        {
+            LauncherSpeedCmd = -1500; //MaxLauncherSpeed
+        }
+        else if (gamepad1.dpad_down)
+        {
+            LauncherSpeedCmd = -1000; //MaxLauncherSpeed
+        }
+        else if (gamepad1.dpad_left)
+        {
+            LauncherSpeedCmd = -800; //MaxLauncherSpeed
         }
         else {
-            gamepad1.stopRumble();
-            gamepad2.stopRumble();
-            LauncherSpeedCmd = MaxLauncherSpeed*gamepad2.right_trigger ;
+            if (gamepad2.right_bumper && (GoalLocation != null || TempRange_cm != 0)) {
+                if (GoalLocation != null) {
+                    TempRange_cm = (float) (GoalLocation.ftcPose.range);
+                    gamepad1.rumble(100);
+                    gamepad2.rumble(100);
+                }
+                if (TempRange_cm < 147) {
+                    TempRange_cm = 147;
+                }
+                // Need to Fix for '26/27
+                LauncherSpeedCmd = 1600 + 3.61f * (TempRange_cm - 147);
+            } else {
+                gamepad1.stopRumble();
+                gamepad2.stopRumble();
+                LauncherSpeedCmd = MaxLauncherSpeed * gamepad2.right_trigger;
+            }
         }
         Launcher.setVelocity(LauncherSpeedCmd);
 
@@ -531,10 +576,32 @@ public class RobotControl extends OpMode{
         }
         Intake.setVelocity(IntakeVelocityCmd);
     }
-    public void SetTurretYawCommand()
+    public void SetRCTurretYawCommand()
     {
         float TurretYawVelocity = gamepad2.right_stick_x*MaxTurretYawSpeed;
-        TurretYawMotor.setVelocity((TurretYawVelocity));
+        this.SetTurretYawCommand(TurretYawVelocity);
+    }
+    public void SetTurretYawCommand(float YawCmd)
+    {
+        float MaxEncoderCountDisplacement = 2250;
+        if(TurretYawMotor.getCurrentPosition() <-MaxEncoderCountDisplacement/2) // OOR Left
+        {
+            if(YawCmd < 0)
+            {
+                YawCmd = 0;
+            }
+        }
+        else if(TurretYawMotor.getCurrentPosition() > MaxEncoderCountDisplacement/2) // #3 OOR Right
+        {
+          if(YawCmd > 0)
+          {
+              YawCmd = 0;
+          }
+        }
+        telemetry.addData("Yaw Position = ",TurretYawMotor.getCurrentPosition());
+        telemetry.addData(" | Yaw Cmd = ",YawCmd);
+
+        TurretYawMotor.setVelocity((YawCmd));
     }
 
     public void RunTeleOp()
@@ -546,8 +613,25 @@ public class RobotControl extends OpMode{
         this.SetRampCommand();
         this.SetDriveCommands();
         this.SetIntakeCommand();
-        this.SetTurretYawCommand();
+        this.SetRCTurretYawCommand();
         this.SetLaunchCommand();
+//
+//        if(gamepad2.xWasPressed())
+//        {
+//            DozerPosition += + 0.01f;
+//        } else if (gamepad2.yWasPressed()) {
+//
+//            DozerPosition -= + 0.01f;
+//        }
+//        if(DozerPosition > 1) {
+//            DozerPosition = 1;
+//        }
+//        else if(DozerPosition < 0) {
+//            DozerPosition = 0;
+//        }
+
+        //telemetry.addData("Dozer Position: (%.2f)",DozerPosition);
+
 
         if( GoalLocation == null){
             telemetry.addLine("Targeting Status: NOT READY");
@@ -556,6 +640,8 @@ public class RobotControl extends OpMode{
         {
             telemetry.addLine("Targeting Status: READY");
         }
+
+
 
     }
 
