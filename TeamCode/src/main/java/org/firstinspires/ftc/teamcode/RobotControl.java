@@ -581,6 +581,12 @@ public class RobotControl extends OpMode{
         float TurretYawVelocity = gamepad2.right_stick_x*MaxTurretYawSpeed;
         this.SetTurretYawCommand(TurretYawVelocity);
     }
+    public void SetAutoTurretYawCommand()
+    {
+        float Kp = 250f;
+        float TurretYawVelocity  =- (float)(GoalLocation.ftcPose.bearing) * Kp;
+        this.SetTurretYawCommand(TurretYawVelocity);
+    }
     public void SetTurretYawCommand(float YawCmd)
     {
         float MaxEncoderCountDisplacement = 2250;
@@ -613,7 +619,22 @@ public class RobotControl extends OpMode{
         this.SetRampCommand();
         this.SetDriveCommands();
         this.SetIntakeCommand();
-        this.SetRCTurretYawCommand();
+        if( GoalLocation == null){
+            telemetry.addLine("Targeting Status: NOT READY");
+            this.SetRCTurretYawCommand();
+        }
+        else
+        {
+            if (gamepad2.right_bumper)
+            {
+                this.SetAutoTurretYawCommand();
+            }
+            else
+            {
+                this.SetRCTurretYawCommand();
+            }
+            telemetry.addData("Targeting Status: READY | Bearing: ",GoalLocation.ftcPose.bearing);
+        }
         this.SetLaunchCommand();
 //
 //        if(gamepad2.xWasPressed())
@@ -633,13 +654,7 @@ public class RobotControl extends OpMode{
         //telemetry.addData("Dozer Position: (%.2f)",DozerPosition);
 
 
-        if( GoalLocation == null){
-            telemetry.addLine("Targeting Status: NOT READY");
-        }
-        else
-        {
-            telemetry.addLine("Targeting Status: READY");
-        }
+
 
 
 
