@@ -53,4 +53,9 @@ public class Auto_Red2_Camera extends OpMode {
 
         Robo.RunTeleOp();
 }
+
+    @Override
+    public void stop() {
+        Robo.StopIndicators();
+    }
 }

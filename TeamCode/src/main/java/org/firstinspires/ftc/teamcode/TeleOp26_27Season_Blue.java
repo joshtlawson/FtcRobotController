@@ -46,4 +46,9 @@ public class TeleOp26_27Season_Blue extends OpMode {
     public void loop() {
         Robo.RunTeleOp();
 }
+
+    @Override
+    public void stop() {
+        Robo.StopIndicators();
+    }
 }

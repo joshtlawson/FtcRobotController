@@ -10,6 +10,19 @@ To use this Android Studio project, you will need Android Studio Narwhal 3 Featu
 
 To program your robot in Blocks or OnBot Java, you do not need Android Studio.
 
+## Team robot indicators
+Configure the desired color channels of the REV Digital LED Indicators as digital devices
+named `LED1` and `LED2`. The indicators are active-low. During the team TeleOp control loop,
+LED1 is on while nectar is visible to the color sensor. LED2 blinks at 3 Hz while the
+alliance goal is visible, turns off when the goal is lost, and stays on during the
+`Launch` state.
+
+During TeleOp, once launching begins, a lost goal is tolerated for up to five seconds
+before the gate closes and the intake stops. Adjust `LAUNCH_GOAL_LOSS_HOLD_SECONDS`
+in `RobotControl` to change this timeout. The turret stops while the goal is not
+visible; releasing the launch bumper stops the sequence immediately. A visible but
+misaligned goal still pauses launching immediately.
+
 ## Getting Started
 If you are new to robotics or new to the *FIRST* Tech Challenge, then you should consider reviewing the [FTC Blocks Tutorial](https://ftc-docs.firstinspires.org/programming_resources/blocks/Blocks-Tutorial.html) to get familiar with how to use the control system:
 
