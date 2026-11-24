@@ -25,7 +25,10 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagMetadata;
 
 public class RobotControl extends OpMode{
-    private static final double LAUNCH_GOAL_LOSS_HOLD_SECONDS = 5.0;
+    private static final double BALL_QUEUE_ADVANCE_SECONDS = 1.0;
+    private static final float LAUNCHER_SPEED_STEP = 100;
+    private static final float MIN_AUTO_LAUNCHER_SPEED = 100;
+    private static final float MAX_AUTO_LAUNCHER_SPEED = 4000;
 
     private DcMotorEx FrontRightDrive;
     private DcMotorEx FrontLeftDrive;
@@ -53,10 +56,13 @@ public class RobotControl extends OpMode{
     private float StrafingAggressiveness;
     private boolean InvertControllers;
     private float MaxLauncherSpeed;
+    private float autoLauncherSpeed;
     private float MaxIntakeVelocity;
     private float MaxBallMoverSpeed;
     private float MaxTurretYawSpeed;
     private float DozerPosition;
+
+    private float ThroatPosition;
     private boolean LastXBtnState;
     private boolean LastYBtnState;
     private volatile Gamepad gamepad1 = null;
@@ -70,16 +76,20 @@ public class RobotControl extends OpMode{
     private BallType LastSeenBall;
     private AprilTagClusterDetection GoalLocation;
     private float TestLaunchGatePosition;
-
+    private boolean SetThroatPositionRoutine;
+    private boolean SetDozerPositionRoutine;
  private HardwareMap hardwareMap;
     ElapsedTime RunTimer_sec = new ElapsedTime();
     private final ElapsedTime launchTimer = new ElapsedTime();
-    private final ElapsedTime launchGoalLossTimer = new ElapsedTime();
     private final ElapsedTime goalLedTimer = new ElapsedTime();
+    private final ElapsedTime ballQueueTimer = new ElapsedTime();
+    private final BallQueue<BallType> ballQueue = new BallQueue<>(BallType.POLLEN, BALL_QUEUE_ADVANCE_SECONDS);
     private boolean goalDetected = false;
     private LaunchState launchState = LaunchState.Idle;
     private boolean launchGateOpen = false;
-    private boolean launchGoalLost = false;
+    private boolean intakeRunning = false;
+    private boolean gateOpen = false;
+    private boolean ballVisible = false;
 
     private enum LaunchState {
         Idle,
@@ -172,19 +182,28 @@ public class RobotControl extends OpMode{
         ForwardAggressiveness = 2500;
         StrafingAggressiveness = 2500;
         InvertControllers = false;
-        MaxLauncherSpeed = 1250;
+        MaxLauncherSpeed = 2050;
+        autoLauncherSpeed = MaxLauncherSpeed;
         MaxIntakeVelocity = 2000;
         MaxBallMoverSpeed = 3000;
         MaxTurretYawSpeed = 3000;
         IsFlowerDown = false;
         LastSeenBall = BallType.POLLEN;
+        ballQueue.reset();
+        ballQueueTimer.reset();
+        intakeRunning = false;
+        ballVisible = false;
         launchState = LaunchState.Idle;
         launchGateOpen = false;
-        launchGoalLost = false;
         goalDetected = false;
         TestLaunchGatePosition = 0;
+        ThroatPosition = 0;
         CloseGate();
+        SetPollenPosition();
 
+        // Optional Calibration Routines
+        SetThroatPositionRoutine = true;
+        SetDozerPositionRoutine = true;
     }
     public void StopRobot()
     {
@@ -193,13 +212,12 @@ public class RobotControl extends OpMode{
         BackLeftDrive.setVelocity(0);
         BackRightDrive.setVelocity(0);
         //BallMover.setVelocity(0);
-        Intake.setVelocity(0);
+        SetIntakeVelocity(0);
         Launcher.setVelocity(0);
         TurretYawMotor.setVelocity(0);
         CloseGate();
         launchState = LaunchState.Idle;
         launchGateOpen = false;
-        launchGoalLost = false;
         StopIndicators();
     }
     public void StopIndicators()
@@ -232,6 +250,9 @@ public class RobotControl extends OpMode{
         RunTimer_sec.reset();
         telemetry.addLine("waiting");
         while (RunTimer_sec.seconds() < MoveTime_sec) {
+            if (intakeRunning) {
+                UpdateBallQueue(false);
+            }
         }
         telemetry.addLine("done");
     }
@@ -264,6 +285,9 @@ public class RobotControl extends OpMode{
         RunTimer_sec.reset();
         telemetry.addLine("waiting");
         while (RunTimer_sec.seconds() < waitTime_sec && (FrontLeftDrive.isBusy() || FrontRightDrive.isBusy() || BackLeftDrive.isBusy() || BackRightDrive.isBusy())) {
+            if (intakeRunning) {
+                UpdateBallQueue(false);
+            }
         }
         telemetry.addLine("done");
     }
@@ -273,6 +297,13 @@ public class RobotControl extends OpMode{
         float RPM2DPS = 360f/60f;
         Intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         Intake.setVelocity(SpeedCmd_rpm*RPM2DPS, AngleUnit.DEGREES);
+        intakeRunning = SpeedCmd_rpm != 0;
+        UpdateBallQueue(false);
+    }
+    private void SetIntakeVelocity(double velocity)
+    {
+        Intake.setVelocity(velocity);
+        intakeRunning = velocity != 0;
     }
     /**
      * Describe this function...
@@ -282,12 +313,18 @@ public class RobotControl extends OpMode{
         ((DcMotorEx) Launcher).setVelocity(LauncherSpeed);
         RunTimer_sec.reset();
         while (RunTimer_sec.seconds() < SpinUpTime_sec) {
+            if (intakeRunning) {
+                UpdateBallQueue(false);
+            }
         }
         // Open the Gates
 
         //((DcMotorEx) BallMover).setVelocity(MaxBallMoverSpeed);
         RunTimer_sec.reset();
         while (RunTimer_sec.seconds() < LaunchTime_sec) {
+            if (intakeRunning) {
+                UpdateBallQueue(false);
+            }
         }
         ((DcMotorEx) Launcher).setVelocity(0);
         //((DcMotorEx) BallMover).setVelocity(0);
@@ -298,6 +335,9 @@ public class RobotControl extends OpMode{
         float LauncherSpeedCmd = MaxLauncherSpeed;
         RunTimer_sec.reset();
         while (RunTimer_sec.seconds() < TargetTime_s) {
+            if (intakeRunning) {
+                UpdateBallQueue(false);
+            }
 
             AprilTagClusterDetection GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
             if (GoalLocation != null) {
@@ -330,35 +370,59 @@ public class RobotControl extends OpMode{
     }
     public void SetNectorPosition()
     {
-        LauncherThroat.setPosition(0.6);
+        if(SetThroatPositionRoutine) {
+            LauncherThroat.setPosition(ThroatPosition);
+        }
+        else {
+            LauncherThroat.setPosition(0.6);
+        }
     }
     public void SetPollenPosition()
     {
-        LauncherThroat.setPosition(0.3);
+        if(SetThroatPositionRoutine) {
+            LauncherThroat.setPosition(ThroatPosition);
+        }
+        else {
+            LauncherThroat.setPosition(0.3);
+        }
     }
 
     public void RaiseRamp()
     {
         float DownPosition = 0.71f;
         FlowerRamp.setPosition(0.75);
-        DozerLeftServo.setPosition(1-DownPosition);
-        DozerRightServo.setPosition((DownPosition));
+        if(SetDozerPositionRoutine) {
+            DozerLeftServo.setPosition(1-DozerPosition);
+            DozerRightServo.setPosition((DozerPosition));
+        }
+        else {
+            DozerLeftServo.setPosition(1-DownPosition);
+            DozerRightServo.setPosition((DownPosition));
+        }
     }
     public void LowerRamp()
     {
         float UpPosition = 0.24f;
         FlowerRamp.setPosition(0.25);
-        DozerLeftServo.setPosition(1-UpPosition);
-        DozerRightServo.setPosition((UpPosition));
+        if(SetDozerPositionRoutine) {
+            DozerLeftServo.setPosition(1-DozerPosition);
+            DozerRightServo.setPosition((DozerPosition));
+        }
+        else {
+            DozerLeftServo.setPosition(1 - UpPosition);
+            DozerRightServo.setPosition((UpPosition));
+        }
     }
 
     public void OpenGate()
     {
         LaunchGate.setPosition(0.14);
+        gateOpen = true;
     }
     public void CloseGate()
     {
         LaunchGate.setPosition(0.33);
+        gateOpen = false;
     }
     public void SetDriveMotionCmds(float ForwardSpeed, float RightSpeed, float ClockwiseSpeed)
     {
@@ -470,15 +534,22 @@ public class RobotControl extends OpMode{
     }
     public void DetectColors()
     {
+        DetectColors(true);
+    }
+
+    private void DetectColors(boolean reportTelemetry)
+    {
         int red = BallColor.red();
         int green = BallColor.green();
         int blue = BallColor.blue();
-        telemetry.addData("Detected Red: ",red);
-        telemetry.addData(" | Green: ",green);
-        telemetry.addData(" | Blue: ",blue);
-        telemetry.addLine();
+        if (reportTelemetry) {
+            telemetry.addData("Detected Red: ",red);
+            telemetry.addData(" | Green: ",green);
+            telemetry.addData(" | Blue: ",blue);
+            telemetry.addLine();
+        }
         int VisibleThreshold = 300;
-        boolean ballVisible = red > VisibleThreshold || blue > VisibleThreshold || green > VisibleThreshold;
+        ballVisible = red > VisibleThreshold || blue > VisibleThreshold || green > VisibleThreshold;
         if (ballVisible)
         { //Ball Detected
             if (blue > 2 * green && blue > 2 * red)
@@ -495,34 +566,42 @@ public class RobotControl extends OpMode{
             }
         }
         LED1.setState(!(ballVisible && LastSeenBall == BallType.NECTAR));
-        if (LastSeenBall == BallType.NECTAR) {
-            telemetry.addLine("Nectar Detected");
-        } else if (LastSeenBall == BallType.POLLEN) {
-            telemetry.addLine("Pollen Detected");
+        if (reportTelemetry) {
+            if (LastSeenBall == BallType.NECTAR) {
+                telemetry.addLine("Nectar Detected");
+            } else if (LastSeenBall == BallType.POLLEN) {
+                telemetry.addLine("Pollen Detected");
+            } else {
+                telemetry.addLine("Unknown Detected");
+            }
+        }
+    }
+
+    private void UpdateBallQueue(boolean reportTelemetry)
+    {
+        DetectColors(reportTelemetry);
+        ballQueue.update(intakeRunning, gateOpen, ballQueueTimer.seconds(),
+                ballVisible ? LastSeenBall : null);
+        if (reportTelemetry) {
+            SetAUTOThroatPosition();
+            telemetry.addData("Ball Queue (oldest first)", ballQueue);
+        } else if (ballQueue.oldest() == BallType.NECTAR) {
+            SetNectorPosition();
         } else {
-            telemetry.addLine("Unknown Detected");
+            SetPollenPosition();
         }
     }
     public void SetRCThroatPosition()
-    {// Invert As Needed
-        this.DetectColors();
-        // Manual Throat Position Setting
-        if (gamepad2.left_bumper) {
-            this.SetNectorPosition();
-            telemetry.addLine("NECTAR Position");
-        } else {
-            this.SetPollenPosition();
-            telemetry.addLine("POLLEN Position");
-        }
+    {
+        SetAUTOThroatPosition();
     }
     public void SetAUTOThroatPosition()
-    {// Invert As Needed
-        this.DetectColors();
-        if( LastSeenBall == BallType.NECTAR) {
+    {
+        if (ballQueue.oldest() == BallType.NECTAR) {
             this.SetNectorPosition();
             telemetry.addLine("NECTAR Position");
         }
-        else if(LastSeenBall == BallType.POLLEN){
+        else {
             this.SetPollenPosition();
             telemetry.addLine("POLLEN Position");
         }
@@ -567,7 +646,7 @@ public class RobotControl extends OpMode{
     public void SetLaunchCommand()
     {
         // Launcher
-        float LauncherSpeedCmd;
+        float LauncherSpeedCmd = 0;
         if(gamepad1.a)
         {
             LauncherSpeedCmd = -4000; //MaxLauncherSpeed
@@ -600,24 +679,7 @@ public class RobotControl extends OpMode{
         {
             LauncherSpeedCmd = -800; //MaxLauncherSpeed
         }
-        else {
-            if (gamepad2.right_bumper && (GoalLocation != null || TempRange_cm != 0)) {
-                if (GoalLocation != null) {
-                    TempRange_cm = (float) (GoalLocation.ftcPose.range);
-                    gamepad1.rumble(100);
-                    gamepad2.rumble(100);
-                }
-                if (TempRange_cm < 147) {
-                    TempRange_cm = 147;
-                }
-                // Need to Fix for '26/27
-                LauncherSpeedCmd = 1600 + 3.61f * (TempRange_cm - 147);
-            } else {
-                gamepad1.stopRumble();
-                gamepad2.stopRumble();
-                LauncherSpeedCmd = MaxLauncherSpeed * gamepad2.right_trigger;
-            }
-        }
+
         Launcher.setVelocity(LauncherSpeedCmd);
 
         telemetry.addData("Launcher Velocity: (%.2f)",LauncherSpeedCmd);
@@ -633,7 +695,7 @@ public class RobotControl extends OpMode{
         } else {
             IntakeVelocityCmd = 0;
         }
-        Intake.setVelocity(IntakeVelocityCmd);
+        SetIntakeVelocity(IntakeVelocityCmd);
     }
     public void LaunchControl()
     {
@@ -641,18 +703,32 @@ public class RobotControl extends OpMode{
         final double gateOpenDelaySeconds = 1.0;
         final double launcherSetpointFraction = 1.0;
         final double maxYawErrorDegrees = 5.0;
-        final double launcherSpeedCommand = MaxLauncherSpeed;
+        if (gamepad2.xWasPressed()) {
+            autoLauncherSpeed = Math.min(MAX_AUTO_LAUNCHER_SPEED, autoLauncherSpeed + LAUNCHER_SPEED_STEP);
+        }
+        if (gamepad2.yWasPressed()) {
+            autoLauncherSpeed = Math.max(MIN_AUTO_LAUNCHER_SPEED, autoLauncherSpeed - LAUNCHER_SPEED_STEP);
+        }
+        final double launcherSpeedCommand = autoLauncherSpeed;
         final double intakeSpeedCommand = -MaxIntakeVelocity;
+
+        if (GoalLocation != null) {
+            gamepad1.rumbleBlips(100);
+            gamepad2.rumbleBlips(100);
+        }
+        else {
+            gamepad1.stopRumble();
+            gamepad2.stopRumble();
+        }
 
         if (!gamepad2.right_bumper) {
             SetRCTurretYawCommand();
             CloseGate();
             launchGateOpen = false;
-            launchGoalLost = false;
             if (launchState != LaunchState.Idle) {
                 launchState = LaunchState.Idle;
                 Launcher.setVelocity(0);
-                Intake.setVelocity(0);
+                SetIntakeVelocity(0);
             } else {
                 SetLaunchCommand();
                 SetIntakeCommand();
@@ -664,15 +740,7 @@ public class RobotControl extends OpMode{
                 yawAligned = Math.abs(GoalLocation.ftcPose.bearing) <= maxYawErrorDegrees;
             } else {
                 SetTurretYawCommand(0);
-            }
 
-            if (launchState == LaunchState.Launch && GoalLocation == null) {
-                if (!launchGoalLost) {
-                    launchGoalLossTimer.reset();
-                    launchGoalLost = true;
-                }
-            } else {
-                launchGoalLost = false;
             }
 
             if (launchState == LaunchState.Idle) {
@@ -689,8 +757,7 @@ public class RobotControl extends OpMode{
                 if (yawAligned && (launchTimer.seconds() >= spinupTimeoutSeconds || atSetpoint)) {
                     launchState = LaunchState.OpenGates;
                 }
-            } else if (!yawAligned && !(launchGoalLost
-                    && launchGoalLossTimer.seconds() < LAUNCH_GOAL_LOSS_HOLD_SECONDS)) {
+            } else if (launchState != LaunchState.Launch && !yawAligned) {
                 launchState = LaunchState.OpenGates;
                 launchGateOpen = false;
             }
@@ -705,15 +772,17 @@ public class RobotControl extends OpMode{
             }
 
             Launcher.setVelocity(launcherSpeedCommand);
+            telemetry.addData("Auto Launcher Velocity (ticks/sec)", Launcher.getVelocity());
             if (!launchGateOpen) {
                 CloseGate();
             } else {
                 OpenGate();
             }
-            Intake.setVelocity(launchState == LaunchState.Launch ? intakeSpeedCommand : 0);
+            SetIntakeVelocity(launchState == LaunchState.Launch ? intakeSpeedCommand : 0);
         }
         UpdateGoalIndicator(GoalLocation != null);
         telemetry.addData("Launch State", launchState);
+        telemetry.addData("Auto Launcher Setpoint (ticks/sec)", autoLauncherSpeed);
     }
     public void SetRCTurretYawCommand()
     {
@@ -748,47 +817,63 @@ public class RobotControl extends OpMode{
 
         TurretYawMotor.setVelocity((YawCmd));
     }
+    public void UpdateManualDozerPosition()
+    {
+        if(gamepad2.xWasPressed())
+        {
+            DozerPosition += + 0.01f;
+        } else if (gamepad2.yWasPressed()) {
 
+            DozerPosition -= + 0.01f;
+        }
+        if(DozerPosition > 1) {
+            DozerPosition = 1;
+        }
+        else if(DozerPosition < 0) {
+            DozerPosition = 0;
+        }
+        telemetry.addData("Dozer Position = ",DozerPosition);
+    }
+public void UpdateManualThroatPosition()
+{
+    if(gamepad2.aWasPressed())
+    {
+        ThroatPosition += + 0.01f;
+    } else if (gamepad2.bWasPressed()) {
+
+        ThroatPosition -= + 0.01f;
+    }
+    if(ThroatPosition > 1) {
+        ThroatPosition = 1;
+    }
+    else if(ThroatPosition < 0) {
+        ThroatPosition = 0;
+    }
+    telemetry.addData("Throat Position = ",ThroatPosition);
+}
     public void RunTeleOp()
     {
         GoalLocation = this.UpdateGoalLocation(ActiveAlliance);
         this.SetRampCommand();
 
-//        if(gamepad2.xWasPressed())
-//        {
-//            DozerPosition += + 0.01f;
-//        } else if (gamepad2.yWasPressed()) {
-//
-//            DozerPosition -= + 0.01f;
-//        }
-//        if(DozerPosition > 1) {
-//            DozerPosition = 1;
-//        }
-//        else if(DozerPosition < 0) {
-//            DozerPosition = 0;
-//        }
-//        DozerLeftServo.setPosition(1-DozerPosition);
-//        DozerRightServo.setPosition((DozerPosition));
+        // Manual Calibrations, Normally Off
+        if(SetDozerPositionRoutine)
+        { this.UpdateManualDozerPosition();}
+        if(SetThroatPositionRoutine)
+        { this.UpdateManualThroatPosition();}
 
-        telemetry.addData("Dozer Position = ",DozerPosition);
+
+
         this.SetDriveCommands();
         if( GoalLocation == null){
-            this.DetectColors();
             telemetry.addLine("Targeting Status: NOT READY");
         }
         else
         {
-            if (gamepad2.right_bumper)
-            {
-                this.SetAUTOThroatPosition();
-            }
-            else
-            {
-                this.SetRCThroatPosition();
-            }
             telemetry.addData("Targeting Status: READY | Bearing: ",GoalLocation.ftcPose.bearing);
         }
         this.LaunchControl();
+        UpdateBallQueue(true);
 
 
         //telemetry.addData("Dozer Position: (%.2f)",DozerPosition);
