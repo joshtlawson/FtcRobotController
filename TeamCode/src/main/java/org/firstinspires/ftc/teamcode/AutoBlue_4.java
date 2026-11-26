@@ -37,13 +37,6 @@ public class AutoBlue_4 extends OpMode {
     @Override
     public void start() {
         runtime.reset();
-    }
-
-    /*
-     * Code to run REPEATEDLY after the driver hits START but before they hit STOP
-     */
-    @Override
-    public void loop() {
         Robo.MoveToStartingSequence(4);
         // TBD - Launch Balls
         // TBD - Move to Garden
@@ -51,5 +44,13 @@ public class AutoBlue_4 extends OpMode {
         Robo.IntakeNewBalls();
         // TBD - Return to Launch Position
         // TBD - Launch Balls
+    }
+
+    /*
+     * Code to run REPEATEDLY after the driver hits START but before they hit STOP
+     */
+    @Override
+    public void loop() {
+
 }
 }

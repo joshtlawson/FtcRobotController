@@ -29,6 +29,7 @@ public class RobotControl extends OpMode{
     private static final float LAUNCHER_SPEED_STEP = 100;
     private static final float MIN_AUTO_LAUNCHER_SPEED = 100;
     private static final float MAX_AUTO_LAUNCHER_SPEED = 4000;
+    private static final double DISTANCE_MOVE_VELOCITY = 750; // Encoder ticks per second
 
     private DcMotorEx FrontRightDrive;
     private DcMotorEx FrontLeftDrive;
@@ -145,8 +146,8 @@ public class RobotControl extends OpMode{
         LED2.setMode(DigitalChannel.Mode.OUTPUT);
         StopIndicators();
         // Setup the PID Tuning
-        ((DcMotorEx) FrontRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
-        ((DcMotorEx) FrontLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(10, 0, 0, 7, MotorControlAlgorithm.PIDF));
+        ((DcMotorEx) FrontRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 7, MotorControlAlgorithm.PIDF));
+        ((DcMotorEx) FrontLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 7, MotorControlAlgorithm.PIDF));
         ((DcMotorEx) BackLeftDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 7, MotorControlAlgorithm.PIDF));
         ((DcMotorEx) BackRightDrive).setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(15, 5, 0, 7, MotorControlAlgorithm.PIDF));
 
@@ -172,8 +173,8 @@ public class RobotControl extends OpMode{
         TempRange_cm = 0; // Init to zero
         DozerPosition = 0.5f;
 
-        RotationRatio = 11.1;
-        GearRatio = 41.25;
+        RotationRatio = 11.1;//22.2;
+        GearRatio = 44; //45.8;
 
         // Control Parameters
         SteeringAggressiveness = 1500;
@@ -202,7 +203,7 @@ public class RobotControl extends OpMode{
         SetPollenPosition();
 
         // Optional Calibration Routines
-        SetThroatPositionRoutine = true;
+        SetThroatPositionRoutine = false;
         SetDozerPositionRoutine = true;
     }
     public void StopRobot()
@@ -264,32 +265,75 @@ public class RobotControl extends OpMode{
         UpdateGoalIndicator(GoalID != null);
         return GoalID;
     }
-    /**
-     * Describe this function...
-     */
     public void RobotMoveDistance(float Forward_in, int Rotate_cw_degrees, float Lateral_right_in, int waitTime_sec) {
-        telemetry.addLine("calledFunction");
+        if (waitTime_sec <= 0) {
+            throw new IllegalArgumentException("Distance move timeout must be positive");
+        }
+        telemetry.addLine("RobotMoveDistance");
         BackLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         FrontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         FrontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         BackRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
         FrontLeftDrive.setTargetPosition((int) (GearRatio * Forward_in + GearRatio * Lateral_right_in + RotationRatio * Rotate_cw_degrees));
         BackLeftDrive.setTargetPosition((int) ((GearRatio * Forward_in - GearRatio * Lateral_right_in) + RotationRatio * Rotate_cw_degrees));
-        FrontRightDrive.setTargetPosition((int) ((GearRatio * Forward_in - GearRatio * Lateral_right_in) - RotationRatio * Rotate_cw_degrees));
+        FrontRightDrive.setTargetPosition((int) ((-GearRatio * Forward_in + GearRatio * Lateral_right_in) + RotationRatio * Rotate_cw_degrees));
         BackRightDrive.setTargetPosition((int) ((GearRatio * Forward_in + GearRatio * Lateral_right_in) - RotationRatio * Rotate_cw_degrees));
         BackRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         BackLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         FrontLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         FrontRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        RunTimer_sec = new ElapsedTime();
-        RunTimer_sec.reset();
-        telemetry.addLine("waiting");
-        while (RunTimer_sec.seconds() < waitTime_sec && (FrontLeftDrive.isBusy() || FrontRightDrive.isBusy() || BackLeftDrive.isBusy() || BackRightDrive.isBusy())) {
-            if (intakeRunning) {
-                UpdateBallQueue(false);
+        ElapsedTime moveTimer = new ElapsedTime();
+        try {
+            FrontLeftDrive.setVelocity(DISTANCE_MOVE_VELOCITY);
+            FrontRightDrive.setVelocity(DISTANCE_MOVE_VELOCITY);
+            BackLeftDrive.setVelocity(DISTANCE_MOVE_VELOCITY);
+            BackRightDrive.setVelocity(DISTANCE_MOVE_VELOCITY);
+            telemetry.addLine("waiting for move");
+            ElapsedTime debugTimer = new ElapsedTime();
+            while (FrontLeftDrive.isBusy() || FrontRightDrive.isBusy() || BackLeftDrive.isBusy() || BackRightDrive.isBusy()) {
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new IllegalStateException("Distance move interrupted");
+                }
+                if (moveTimer.seconds() >= waitTime_sec) {
+                    ReportDistanceMoveDebug(moveTimer.seconds());
+                    telemetry.addLine("Distance move timed out before reaching its target");
+                    telemetry.update();
+                }
+                if (debugTimer.seconds() >= 0.1) {
+                    ReportDistanceMoveDebug(moveTimer.seconds());
+                    telemetry.update();
+                    debugTimer.reset();
+                }
             }
+            ReportDistanceMoveDebug(moveTimer.seconds());
+            telemetry.addLine("done with move");
+            telemetry.update();
+        } finally {
+            FrontLeftDrive.setVelocity(0);
+            FrontRightDrive.setVelocity(0);
+            BackLeftDrive.setVelocity(0);
+            BackRightDrive.setVelocity(0);
+            FrontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            FrontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            BackLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            BackRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
-        telemetry.addLine("done");
+    }
+
+    private void ReportDistanceMoveDebug(double elapsedSeconds)
+    {
+        telemetry.addData("Move elapsed (sec)", "%.1f", elapsedSeconds);
+        ReportDriveMotorDebug("Front right", FrontRightDrive);
+        ReportDriveMotorDebug("Front left", FrontLeftDrive);
+        ReportDriveMotorDebug("Back right", BackRightDrive);
+        ReportDriveMotorDebug("Back left", BackLeftDrive);
+    }
+
+    private void ReportDriveMotorDebug(String name, DcMotorEx motor)
+    {
+        telemetry.addData(name, "target: %d | position: %d | busy: %s",
+                motor.getTargetPosition(), motor.getCurrentPosition(), motor.isBusy());
     }
 
     private void SetIntakeState(float  SpeedCmd_rpm)
@@ -374,7 +418,7 @@ public class RobotControl extends OpMode{
             LauncherThroat.setPosition(ThroatPosition);
         }
         else {
-            LauncherThroat.setPosition(0.6);
+            LauncherThroat.setPosition(0.3);
         }
     }
     public void SetPollenPosition()
@@ -383,7 +427,7 @@ public class RobotControl extends OpMode{
             LauncherThroat.setPosition(ThroatPosition);
         }
         else {
-            LauncherThroat.setPosition(0.3);
+            LauncherThroat.setPosition(0.04);
         }
     }
 
@@ -426,10 +470,10 @@ public class RobotControl extends OpMode{
     }
     public void SetDriveMotionCmds(float ForwardSpeed, float RightSpeed, float ClockwiseSpeed)
     {
-        FrontLeftDrive.setVelocity(ForwardSpeed  - RightSpeed + ClockwiseSpeed);
-        BackLeftDrive.setVelocity(ForwardSpeed + RightSpeed + ClockwiseSpeed);
-        FrontRightDrive.setVelocity(-ForwardSpeed - RightSpeed + ClockwiseSpeed);
-        BackRightDrive.setVelocity(ForwardSpeed - RightSpeed - ClockwiseSpeed);
+        FrontLeftDrive.setVelocity(ForwardSpeed  + RightSpeed + ClockwiseSpeed);
+        BackLeftDrive.setVelocity(ForwardSpeed - RightSpeed + ClockwiseSpeed);
+        FrontRightDrive.setVelocity(-ForwardSpeed + RightSpeed + ClockwiseSpeed);
+        BackRightDrive.setVelocity(ForwardSpeed + RightSpeed - ClockwiseSpeed);
     }
     public void SetLaunchControlCmds(float intakeVelocity, float BallMoverSpeedCmd, float LauncherSpeedCmd)
     {
@@ -477,6 +521,7 @@ public class RobotControl extends OpMode{
                 this.RobotMoveDistance(0, 0, 80, 5);
                 //Action 6
                 this.RobotMoveDistance(36, 0, 0, 5);
+                this.LaunchAutoBalls(10);
                 break;
             case 2:
                 // Action 1
@@ -491,6 +536,7 @@ public class RobotControl extends OpMode{
                 this.RobotMoveDistance(0, 0, 80, 5);
                 //Action 6
                 this.RobotMoveDistance(36, 0, 0, 5);
+                this.LaunchAutoBalls(10);
                 break;
             case 3:
                 // Action 1
@@ -505,20 +551,14 @@ public class RobotControl extends OpMode{
                 this.RobotMoveDistance(0, 0, 80, 5);
                 //Action 6
                 this.RobotMoveDistance(36, 0, 0, 5);
+                this.LaunchAutoBalls(10);
                 break;
             case 4:
                 // Action 1
-                this.RobotMoveDistance(24,0,0,5);
+                this.RobotMoveDistance(12,0,0,5);
                 // Action 2
-                this.RobotMoveDistance(0, 45, 0, 5);
-                //Action 3
-                this.RobotMoveDistance(24, 0, 0, 5);
-                //Action 4
-                this.RobotMoveDistance(0, 90, 0, 5);
-                //Action 5
-                this.RobotMoveDistance(0, 0, 80, 5);
-                //Action 6
-                this.RobotMoveDistance(36, 0, 0, 5);
+                this.RobotMoveDistance(0, 0, 24, 5);
+                this.LaunchAutoBalls(10);
                 break;
             case 5:
                 // Action 1
@@ -527,6 +567,7 @@ public class RobotControl extends OpMode{
                 this.RobotMoveDistance(0, 0, 80, 5);
                 //Action 3
                 this.RobotMoveDistance(36, 0, 0, 5);
+                this.LaunchAutoBalls(10);
                 break;
 
         }
@@ -536,7 +577,25 @@ public class RobotControl extends OpMode{
     {
         DetectColors(true);
     }
-
+private void LaunchAutoBalls(double Time_s)
+{
+    ElapsedTime autoLaunchTimer = new ElapsedTime();
+    try {
+        while (autoLaunchTimer.seconds() < Time_s && !Thread.currentThread().isInterrupted()) {
+            GoalLocation = UpdateGoalLocation(ActiveAlliance);
+            LaunchControl(true);
+            UpdateBallQueue(true);
+            telemetry.update();
+        }
+    } finally {
+        Launcher.setVelocity(0);
+        SetIntakeVelocity(0);
+        SetTurretYawCommand(0);
+        CloseGate();
+        launchGateOpen = false;
+        launchState = LaunchState.Idle;
+    }
+}
     private void DetectColors(boolean reportTelemetry)
     {
         int red = BallColor.red();
@@ -697,7 +756,7 @@ public class RobotControl extends OpMode{
         }
         SetIntakeVelocity(IntakeVelocityCmd);
     }
-    public void LaunchControl()
+    public void LaunchControl(boolean IsInAuto)
     {
         final double spinupTimeoutSeconds = 2.0;
         final double gateOpenDelaySeconds = 1.0;
@@ -721,7 +780,7 @@ public class RobotControl extends OpMode{
             gamepad2.stopRumble();
         }
 
-        if (!gamepad2.right_bumper) {
+        if (!gamepad2.right_bumper && !IsInAuto) {
             SetRCTurretYawCommand();
             CloseGate();
             launchGateOpen = false;
@@ -836,10 +895,10 @@ public class RobotControl extends OpMode{
     }
 public void UpdateManualThroatPosition()
 {
-    if(gamepad2.aWasPressed())
+    if(gamepad2.xWasPressed())
     {
         ThroatPosition += + 0.01f;
-    } else if (gamepad2.bWasPressed()) {
+    } else if (gamepad2.yWasPressed()) {
 
         ThroatPosition -= + 0.01f;
     }
@@ -872,10 +931,18 @@ public void UpdateManualThroatPosition()
         {
             telemetry.addData("Targeting Status: READY | Bearing: ",GoalLocation.ftcPose.bearing);
         }
-        this.LaunchControl();
-        UpdateBallQueue(true);
+        if(SetThroatPositionRoutine)
+        {
+            LauncherThroat.setPosition(DozerPosition);
+        }
+        else
+        {
+            this.LaunchControl(false);
+            UpdateBallQueue(true);
+        }
 
 
+        telemetry.update();
         //telemetry.addData("Dozer Position: (%.2f)",DozerPosition);
 
 
