@@ -462,7 +462,7 @@ public class RobotControl extends OpMode{
 
     public void IntakeNewBalls()
     {
-        float IntakeSpeed_rpm = 900;
+        float IntakeSpeed_rpm = -900;
         float ForwardSpeed_ips = 1;
         float ShiftRight_in = 12;
         int AttemptRepeatsCount = 1;
