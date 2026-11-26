@@ -20,8 +20,6 @@ public class AutoRed_2 extends OpMode {
      * Code to run ONCE when the driver hits INIT
      */
     public void init() {
-        Robo.InitRobot(hardwareMap,telemetry, RobotControl.AllianceColor.BLUE, gamepad1, gamepad2);
-
     }
     /*
      * Code to run REPEATEDLY after the driver hits INIT, but before they hit START
@@ -36,7 +34,9 @@ public class AutoRed_2 extends OpMode {
      */
     @Override
     public void start() {
+        Robo.InitRobot(hardwareMap,telemetry, RobotControl.AllianceColor.RED, gamepad1, gamepad2);
         runtime.reset();
+        Robo.RunAutonomousSequence(2);
     }
 
     /*
@@ -44,12 +44,6 @@ public class AutoRed_2 extends OpMode {
      */
     @Override
     public void loop() {
-        Robo.MoveToStartingSequence(2);
-        // TBD - Launch Balls
-        // TBD - Move to Garden
-        // TBD - Pickup New Balls
-        Robo.IntakeNewBalls();
-        // TBD - Return to Launch Position
-        // TBD - Launch Balls
+
 }
 }

@@ -37,15 +37,9 @@ public class AutoBlue_1 extends OpMode {
      */
     @Override
     public void start() {
+        Robo.InitRobot(hardwareMap,telemetry, RobotControl.AllianceColor.BLUE, gamepad1, gamepad2);
         runtime.reset();
-        telemetry.addLine("This is AutoBlue1 for Realzzzz");
-        Robo.MoveToStartingSequence(1);
-        // TBD - Launch Balls
-        // TBD - Move to Garden
-        // TBD - Pickup New Balls
-        //Robo.IntakeNewBalls();
-        // TBD - Return to Launch Position
-        // TBD - Launch Balls
+        Robo.RunAutonomousSequence(1);
     }
 
     /*

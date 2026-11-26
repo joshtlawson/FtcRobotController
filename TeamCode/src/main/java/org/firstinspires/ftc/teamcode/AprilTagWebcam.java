@@ -108,6 +108,25 @@ public class AprilTagWebcam {
         }
         return null;
     }
+    public boolean IsHiveTipped(RobotControl.AllianceColor Alliance) {
+        for (AprilTagDetection detection : detectionTags){
+            if (detection instanceof AprilTagClusterDetection) {
+                AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
+
+                if(clusterDet.metadata.name.charAt(0) == 'R' &&
+                        Alliance == RobotControl.AllianceColor.RED &&
+                        abs(clusterDet.ftcPose.roll) > 90) {
+                    return true;
+                }
+                else if(clusterDet.metadata.name.charAt(0) == 'B' &&
+                        Alliance == RobotControl.AllianceColor.BLUE &&
+                        abs(clusterDet.ftcPose.roll) < 90) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     public void stop(){
             if (visionPortal != null){
                 visionPortal.close();

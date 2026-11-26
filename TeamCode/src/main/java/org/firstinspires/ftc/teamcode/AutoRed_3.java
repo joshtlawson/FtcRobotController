@@ -36,7 +36,9 @@ public class AutoRed_3 extends OpMode {
      */
     @Override
     public void start() {
+        Robo.InitRobot(hardwareMap,telemetry, RobotControl.AllianceColor.RED, gamepad1, gamepad2);
         runtime.reset();
+        Robo.RunAutonomousSequence(1);
     }
 
     /*
@@ -44,12 +46,6 @@ public class AutoRed_3 extends OpMode {
      */
     @Override
     public void loop() {
-        Robo.MoveToStartingSequence(3);
-        // TBD - Launch Balls
-        // TBD - Move to Garden
-        // TBD - Pickup New Balls
-        Robo.IntakeNewBalls();
-        // TBD - Return to Launch Position
-        // TBD - Launch Balls
+
 }
 }
